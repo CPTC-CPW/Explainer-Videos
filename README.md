@@ -25,8 +25,6 @@ Each explainer is a single static HTML page that students step through at their 
 
 GitHub Free only serves Pages from public repositories. The `.nojekyll` file tells Pages to serve the files as-is.
 
-To preview locally, run `python3 -m http.server` in the repo root and open <http://localhost:8000>.
-
 ## Layout
 
 ```
