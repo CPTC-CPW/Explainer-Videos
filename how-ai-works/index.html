@@ -1,0 +1,740 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How AI Works · Explainers</title>
+<meta name="description" content="A step-through animated explainer of how LLMs work, token budgets, MCP servers, custom agents, subagents and skills — for programming students.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../assets/explainer.css">
+<noscript><style>.step[hidden]{display:block;margin-bottom:64px}.controls,.chapters,.eyebrow{display:none}</style></noscript>
+</head>
+<body>
+<a class="skip" href="#stage">Skip to content</a>
+<div class="shell">
+
+<header class="topbar">
+<a class="brand" href="../" aria-label="All explainers">
+<svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true" style="flex: 0 0 auto"><rect x="2" y="2" width="10" height="10" rx="3" fill="#F2B544"></rect><rect x="16" y="2" width="10" height="10" rx="3" fill="none" stroke="#5CCFE6" stroke-width="2"></rect><rect x="2" y="16" width="10" height="10" rx="3" fill="none" stroke="#5CCFE6" stroke-width="2"></rect><rect x="16" y="16" width="10" height="10" rx="3" fill="#5CCFE6"></rect></svg>
+<span class="brand-name">How AI Works</span>
+<span class="lbl">← all explainers</span>
+</a>
+<nav class="chapters" aria-label="Chapters" data-chapters></nav>
+</header>
+
+<main class="stage" id="stage" data-explainer>
+<div class="lbl eyebrow" data-eyebrow aria-live="polite"></div>
+
+
+<!-- 01 · The core loop -->
+<section class="step" data-chapter="01" data-chapter-label="How LLMs work" data-title="The core loop" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">An LLM is a next-token predictor</h2>
+<p class="p">Strip away the hype and a large language model does one thing: given a sequence of tokens, it outputs a <b>probability for every possible next token</b>. The app picks one, appends it, and runs the model again.</p>
+<p class="p">Chat, code generation, agents — all of it is built on this loop. Think of the model as a function: <span class="ic">probs = model(tokens_so_far)</span>, with billions of learned numbers (weights) inside. It doesn't look anything up and it doesn't run your code. It's math over the input.</p>
+<div class="key"><b>Key idea:</b> the model writes one token per pass. A 500-token answer is 500 passes through the model, each one re-reading everything before it.</div>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div class="lbl">Generating, one token per pass · “·” = space · probabilities illustrative</div>
+<div class="mono" style="font-size: 19px; line-height: 1.7; background: #0B0D10; border: 1px solid #2A2F37; border-radius: 10px; padding: 20px">
+<div><span style="color: #C9A8F5">def</span> add(a, b):</div>
+<div style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 8px; margin-top: 12px">
+<span class="pop" style="animation-delay: .6s; display: flex; flex-direction: column; align-items: flex-start; gap: 6px"><span class="tok tok-a">↵</span><span style="font-size: 13px; line-height: 1.35; color: #F7CF7E">97%</span><span style="font-size: 12px; line-height: 1.35; color: #9AA0A9">·# 1%</span></span>
+<span class="pop" style="animation-delay: 1.2s; display: flex; flex-direction: column; align-items: flex-start; gap: 6px"><span class="tok tok-b">····return</span><span style="font-size: 13px; line-height: 1.35; color: #8FE0F0">91%</span><span style="font-size: 12px; line-height: 1.35; color: #9AA0A9">····""" 4%</span></span>
+<span class="pop" style="animation-delay: 1.8s; display: flex; flex-direction: column; align-items: flex-start; gap: 6px"><span class="tok tok-a">·a</span><span style="font-size: 13px; line-height: 1.35; color: #F7CF7E">88%</span><span style="font-size: 12px; line-height: 1.35; color: #9AA0A9">·sum 5%</span></span>
+<span class="pop" style="animation-delay: 2.4s; display: flex; flex-direction: column; align-items: flex-start; gap: 6px"><span class="tok tok-b">·+</span><span style="font-size: 13px; line-height: 1.35; color: #8FE0F0">96%</span><span style="font-size: 12px; line-height: 1.35; color: #9AA0A9">·* 1%</span></span>
+<span class="pop" style="animation-delay: 3s; display: flex; flex-direction: column; align-items: flex-start; gap: 6px"><span class="tok tok-a">·b</span><span style="font-size: 13px; line-height: 1.35; color: #F7CF7E">99%</span><span style="font-size: 12px; line-height: 1.35; color: #9AA0A9">·a 0.4%</span></span>
+<span class="caret" style="margin-top: 4px"></span>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 14px; font-size: 12px; line-height: 1.4; color: #9AA0A9"><span>top line: the token picked, and its probability</span><span>grey: the runner-up it beat</span></div>
+</div>
+<div class="lbl">The loop, on repeat</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+<div class="node cyc" style="animation-delay: 0s">Tokens in</div>
+<span class="chev" aria-hidden="true">›</span>
+<div class="node cyc" style="animation-delay: 1s">Model</div>
+<span class="chev" aria-hidden="true">›</span>
+<div class="node cyc" style="animation-delay: 2s">Probabilities</div>
+<span class="chev" aria-hidden="true">›</span>
+<div class="node cyc" style="animation-delay: 3s">Pick one</div>
+<span class="chev" aria-hidden="true">›</span>
+<div class="node cyc" style="animation-delay: 4s">Append ↺</div>
+</div>
+</div>
+</section>
+</section>
+
+<!-- 02 · Tokens -->
+<section class="step" data-chapter="01" data-chapter-label="How LLMs work" data-title="Tokens" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">Models read tokens, not words</h2>
+<p class="p">Before the model sees anything, a <b>tokenizer</b> splits text into chunks from a fixed vocabulary — common words, word pieces, punctuation, whitespace runs. Each token becomes an integer ID, and that sequence of integers is the model's real input.</p>
+<p class="p">Tokens are also the unit of <b>everything that matters to your budget</b>: price, rate limits, speed and the size of the context window are all counted in tokens.</p>
+<p class="p">This is why models have famously miscounted the r's in <b>“strawberry”</b> — often answering two when there are three. The model never sees ten letters, just a few chunks like <span class="ic">str</span> <span class="ic">aw</span> <span class="ic">berry</span>, so spelling and letter-counting questions are surprisingly hard for it.</p>
+<div class="key"><b>Rule of thumb:</b> about 4 characters of English ≈ 1 token, so 100 tokens ≈ 75 words. Code, long identifiers, deep indentation and non-English text usually cost more tokens per character. Exact splits depend on the model.</div>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div class="lbl">Illustrative splits · every tokenizer differs</div>
+<div style="display: flex; flex-direction: column; gap: 22px">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div class="mono" style="font-size: 15px; color: #9AA0A9">"Hello world"</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<span class="tok tok-a pop" style="animation-delay: .3s">Hello</span>
+<span class="tok tok-b pop" style="animation-delay: .45s">·world</span>
+<span class="mono" style="font-size: 14px; color: #9AA0A9; align-self: center; margin-left: 8px">2 tokens</span>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div class="mono" style="font-size: 15px; color: #9AA0A9">"unbelievably"</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<span class="tok tok-a pop" style="animation-delay: .8s">un</span>
+<span class="tok tok-b pop" style="animation-delay: .95s">believ</span>
+<span class="tok tok-a pop" style="animation-delay: 1.1s">ably</span>
+<span class="mono" style="font-size: 14px; color: #9AA0A9; align-self: center; margin-left: 8px">3 tokens</span>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div class="mono" style="font-size: 15px; color: #9AA0A9">getUserById(42)</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<span class="tok tok-a pop" style="animation-delay: 1.4s">get</span>
+<span class="tok tok-b pop" style="animation-delay: 1.5s">User</span>
+<span class="tok tok-a pop" style="animation-delay: 1.6s">By</span>
+<span class="tok tok-b pop" style="animation-delay: 1.7s">Id</span>
+<span class="tok tok-a pop" style="animation-delay: 1.8s">(</span>
+<span class="tok tok-b pop" style="animation-delay: 1.9s">42</span>
+<span class="tok tok-a pop" style="animation-delay: 2s">)</span>
+<span class="mono" style="font-size: 14px; color: #9AA0A9; align-self: center; margin-left: 8px">7 tokens</span>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div class="mono" style="font-size: 15px; color: #9AA0A9">"strawberry" — how many r's?</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<span class="tok tok-a pop" style="animation-delay: 2.3s">str</span>
+<span class="tok tok-b pop" style="animation-delay: 2.4s">aw</span>
+<span class="tok tok-a pop" style="animation-delay: 2.5s">berry</span>
+<span class="mono" style="font-size: 14px; color: #9AA0A9; align-self: center; margin-left: 8px">3 tokens · the r's are hidden inside</span>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div class="lbl">What the model actually receives for getUserById(42)</div>
+<div class="mono pop" style="animation-delay: 2.9s; font-size: 15px; color: #D6DAE0; background: #0B0D10; border: 1px solid #2A2F37; border-radius: 10px; padding: 14px 16px; overflow-x: auto; white-space: nowrap">[ 1093, 2742, 3923, 764, 7, 2983, 8 ]  <span style="color: #9AA0A9">← IDs illustrative</span></div>
+</div>
+</div>
+</div>
+</section>
+</section>
+
+<!-- 03 · Embeddings & attention -->
+<section class="step" data-chapter="01" data-chapter-label="How LLMs work" data-title="Embeddings &amp; attention" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">Vectors, then attention</h2>
+<p class="p">Each token ID is swapped for an <b>embedding</b>: a long vector of numbers (thousands of dimensions) learned during training, where similar meanings land near each other.</p>
+<p class="p">Those vectors flow through a stack of <b>transformer layers</b>. In each layer, <b>attention</b> lets every token look back at every earlier token and pull in information from the ones that matter. That's how “it” knows it means “the server”.</p>
+<div class="key"><b>Why you care:</b> the model can only attend to what's in its input. If the relevant file, error or decision isn't in the context, the model can't use it — and burying it under noise makes it harder to find.</div>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div class="lbl">Token → vector</div>
+<div class="mono" style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 15px">
+<span class="tok tok-b">·server</span>
+<span class="chev" aria-hidden="true">→</span>
+<span style="color: #D6DAE0; overflow-wrap: anywhere">[ 0.12, −0.83, 0.47, 0.05, … ]</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px; padding-top: 4px">
+<span class="tok tok-a">The</span><span class="tok tok-b">·server</span><span class="tok tok-a">·crashed</span><span class="tok tok-b">·because</span><span class="tok" style="background: #F2B544; color: #14110A; border: 1px solid #F2B544">·it</span><span class="tok tok-b">·ran</span><span class="tok tok-a">·out</span><span class="tok tok-b">·of</span><span class="tok tok-a">·memory</span>
+</div>
+<div class="lbl">Where “it” looks · illustrative weights from one attention head</div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div class="row"><span class="mono" style="font-size: 14px">The</span><div class="track"><div class="fill grow" style="width: 4%; background: #5CCFE6; animation-delay: .4s"></div></div><span class="mono" style="font-size: 13px; color: #9AA0A9; text-align: right">4%</span></div>
+<div class="row"><span class="mono" style="font-size: 14px; color: #F7CF7E">server</span><div class="track"><div class="fill grow" style="width: 58%; background: #F2B544; animation-delay: .5s"></div></div><span class="mono" style="font-size: 13px; color: #F7CF7E; text-align: right">58%</span></div>
+<div class="row"><span class="mono" style="font-size: 14px">crashed</span><div class="track"><div class="fill grow" style="width: 16%; background: #5CCFE6; animation-delay: .6s"></div></div><span class="mono" style="font-size: 13px; color: #9AA0A9; text-align: right">16%</span></div>
+<div class="row"><span class="mono" style="font-size: 14px">because</span><div class="track"><div class="fill grow" style="width: 5%; background: #5CCFE6; animation-delay: .7s"></div></div><span class="mono" style="font-size: 13px; color: #9AA0A9; text-align: right">5%</span></div>
+<div class="row"><span class="mono" style="font-size: 14px">it (self)</span><div class="track"><div class="fill grow" style="width: 17%; background: #5CCFE6; animation-delay: .8s"></div></div><span class="mono" style="font-size: 13px; color: #9AA0A9; text-align: right">17%</span></div>
+</div>
+</div>
+</section>
+</section>
+
+<!-- 04 · Sampling -->
+<section class="step" data-chapter="01" data-chapter-label="How LLMs work" data-title="Picking the next token" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">Picking the next token</h2>
+<p class="p">The last layer scores every token in the vocabulary, and those scores become a probability distribution. The app then <b>samples</b> one token from it.</p>
+<p class="p"><b>Temperature</b> controls how adventurous that pick is. Near 0, the top token wins almost every time — more repeatable, good for code and extraction. Higher values flatten the odds — more variety, more surprises, more mistakes.</p>
+<div class="key"><b>Consequence:</b> the model is optimised to be <i>plausible</i>, not verified. A confident-sounding API that doesn't exist is just a high-probability sequence. Always run and test what it writes.</div>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div class="lbl">Prompt so far</div>
+<div class="mono" style="font-size: 18px; color: #D6DAE0; background: #0B0D10; border: 1px solid #2A2F37; border-radius: 10px; padding: 16px 18px">const total = items.<span class="caret" style="vertical-align: middle"></span></div>
+<div class="lbl">Next-token probabilities · illustrative</div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div class="row"><span class="mono" style="font-size: 14px; color: #F7CF7E">reduce</span><div class="track"><div class="fill grow" style="width: 46%; background: #F2B544; animation-delay: .3s"></div></div><span class="mono" style="font-size: 13px; color: #F7CF7E; text-align: right">46%</span></div>
+<div class="row"><span class="mono" style="font-size: 14px">map</span><div class="track"><div class="fill grow" style="width: 21%; background: #5CCFE6; animation-delay: .4s"></div></div><span class="mono" style="font-size: 13px; color: #9AA0A9; text-align: right">21%</span></div>
+<div class="row"><span class="mono" style="font-size: 14px">length</span><div class="track"><div class="fill grow" style="width: 14%; background: #5CCFE6; animation-delay: .5s"></div></div><span class="mono" style="font-size: 13px; color: #9AA0A9; text-align: right">14%</span></div>
+<div class="row"><span class="mono" style="font-size: 14px">filter</span><div class="track"><div class="fill grow" style="width: 9%; background: #5CCFE6; animation-delay: .6s"></div></div><span class="mono" style="font-size: 13px; color: #9AA0A9; text-align: right">9%</span></div>
+<div class="row"><span class="mono" style="font-size: 14px">forEach</span><div class="track"><div class="fill grow" style="width: 6%; background: #5CCFE6; animation-delay: .7s"></div></div><span class="mono" style="font-size: 13px; color: #9AA0A9; text-align: right">6%</span></div>
+<div class="row"><span class="mono" style="font-size: 14px">…others</span><div class="track"><div class="fill grow" style="width: 4%; background: #4A515B; animation-delay: .8s"></div></div><span class="mono" style="font-size: 13px; color: #9AA0A9; text-align: right">4%</span></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 12px">
+<div class="card pop" style="animation-delay: 1.3s"><span class="lbl">temperature ≈ 0</span><span class="small"><b>reduce</b>, nearly every run</span></div>
+<div class="card pop" style="animation-delay: 1.5s"><span class="lbl">temperature ≈ 1</span><span class="small">usually <b>reduce</b>, sometimes <b>map</b> or <b>filter</b></span></div>
+</div>
+</div>
+</section>
+</section>
+
+<!-- 05 · Stateless & context window -->
+<section class="step" data-chapter="01" data-chapter-label="How LLMs work" data-title="Stateless &amp; the context window" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">No memory — just a context window</h2>
+<p class="p">The model keeps nothing between calls. A chat only <i>seems</i> to remember because the app <b>re-sends the whole conversation every turn</b>: system prompt, every message, every file and tool result so far.</p>
+<p class="p">All of it has to fit in the <b>context window</b>, a hard limit counted in tokens. When it fills up, older material must be dropped or summarised — and answers often get worse well before the limit, as the details that matter get buried.</p>
+<p class="p">It also means <b>big context is expensive context</b>. Paste a whole file, a long log or a large data dump and you don't pay for it once — it's re-sent as input on every turn after that. A single 2,000-line log can easily be tens of thousands of tokens, multiplied by every message that follows.</p>
+<div class="key"><b>Key idea:</b> every turn is a brand-new request carrying everything before it. That single fact explains most of the token advice in the next chapter.</div>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div class="lbl">What actually gets sent</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: end">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div class="mono pop" style="animation-delay: .3s; font-size: 13px; padding: 8px; border-radius: 6px; background: #2A2F37; color: #D6DAE0">system</div>
+<div class="mono pop" style="animation-delay: .4s; font-size: 13px; padding: 8px; border-radius: 6px; background: #3A2F15; color: #F7CF7E">you · 1</div>
+<div class="lbl" style="padding-top: 8px">Request 1</div>
+<div class="track"><div class="fill grow" style="width: 12%; background: #F2B544; animation-delay: .6s"></div></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div class="mono pop" style="animation-delay: 1s; font-size: 13px; padding: 8px; border-radius: 6px; background: #2A2F37; color: #D6DAE0">system</div>
+<div class="mono pop" style="animation-delay: 1.1s; font-size: 13px; padding: 8px; border-radius: 6px; background: #3A2F15; color: #F7CF7E">you · 1</div>
+<div class="mono pop" style="animation-delay: 1.2s; font-size: 13px; padding: 8px; border-radius: 6px; background: #14343B; color: #8FE0F0">ai · 1</div>
+<div class="mono pop" style="animation-delay: 1.3s; font-size: 13px; padding: 8px; border-radius: 6px; background: #3A2F15; color: #F7CF7E">you · 2</div>
+<div class="lbl" style="padding-top: 8px">Request 2</div>
+<div class="track"><div class="fill grow" style="width: 30%; background: #F2B544; animation-delay: 1.5s"></div></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div class="mono pop" style="animation-delay: 1.9s; font-size: 13px; padding: 8px; border-radius: 6px; background: #2A2F37; color: #D6DAE0">system</div>
+<div class="mono pop" style="animation-delay: 2s; font-size: 13px; padding: 8px; border-radius: 6px; background: #3A2F15; color: #F7CF7E">you · 1</div>
+<div class="mono pop" style="animation-delay: 2.1s; font-size: 13px; padding: 8px; border-radius: 6px; background: #14343B; color: #8FE0F0">ai · 1</div>
+<div class="mono pop" style="animation-delay: 2.2s; font-size: 13px; padding: 8px; border-radius: 6px; background: #3A2F15; color: #F7CF7E">you · 2</div>
+<div class="mono pop" style="animation-delay: 2.3s; font-size: 13px; padding: 8px; border-radius: 6px; background: #14343B; color: #8FE0F0">ai · 2</div>
+<div class="mono pop" style="animation-delay: 2.4s; font-size: 13px; padding: 8px; border-radius: 6px; background: #3A2F15; color: #F7CF7E">you · 3</div>
+<div class="lbl" style="padding-top: 8px">Request 3</div>
+<div class="track"><div class="fill grow" style="width: 52%; background: #F2B544; animation-delay: 2.6s"></div></div>
+</div>
+</div>
+<p class="small">Bars: share of the context window used. Same chat, three separate requests — each one longer than the last. Anything large you add early is carried in every request after it.</p>
+</div>
+</section>
+</section>
+
+<!-- 06 · What you pay for -->
+<section class="step" data-chapter="02" data-chapter-label="Tokens &amp; budgets" data-title="What you pay for" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">What you actually pay for</h2>
+<p class="p">Every request is billed as <b>input tokens</b> (everything sent) plus <b>output tokens</b> (everything generated). Output tokens usually cost several times more per token than input, and they are produced one pass at a time — so long answers are expensive <i>and</i> slow.</p>
+<p class="p">In a coding assistant, the part you typed is often the smallest slice. Instructions, tool definitions, conversation history and file contents ride along on every request.</p>
+<div class="key"><b>Check your tool:</b> most assistants can show token usage or context fill (in Claude Code, <span class="ic">/context</span> and <span class="ic">/cost</span>). Look before you guess.</div>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div class="lbl">Anatomy of one coding-agent request · proportions illustrative</div>
+<div style="display: flex; gap: 3px; height: 56px; border-radius: 10px; overflow: hidden">
+<div class="grow" style="flex: 8 1 0; background: #5B6470; animation-delay: .2s"></div>
+<div class="grow" style="flex: 14 1 0; background: #2F7F93; animation-delay: .35s"></div>
+<div class="grow" style="flex: 32 1 0; background: #1E4D5A; animation-delay: .5s"></div>
+<div class="grow" style="flex: 30 1 0; background: #7A5A20; animation-delay: .65s"></div>
+<div class="grow" style="flex: 3 1 0; background: #F2B544; animation-delay: .8s"></div>
+<div style="flex: 0 0 10px; background: #101215"></div>
+<div class="grow" style="flex: 13 1 0; background: repeating-linear-gradient(135deg, #5CCFE6 0 6px, #2F7F93 6px 12px); animation-delay: 1s"></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 14px 20px">
+<div class="li pop" style="animation-delay: .3s"><span style="flex: 0 0 14px; height: 14px; border-radius: 3px; margin-top: 5px; background: #5B6470"></span><span><b>System prompt &amp; rules</b> — the app's instructions plus your CLAUDE.md / rules files</span></div>
+<div class="li pop" style="animation-delay: .45s"><span style="flex: 0 0 14px; height: 14px; border-radius: 3px; margin-top: 5px; background: #2F7F93"></span><span><b>Tool definitions</b> — every built-in and MCP tool's name, description and schema</span></div>
+<div class="li pop" style="animation-delay: .6s"><span style="flex: 0 0 14px; height: 14px; border-radius: 3px; margin-top: 5px; background: #1E4D5A; border: 1px solid #5CCFE6; box-sizing: border-box"></span><span><b>Conversation history</b> — every earlier message, re-sent</span></div>
+<div class="li pop" style="animation-delay: .75s"><span style="flex: 0 0 14px; height: 14px; border-radius: 3px; margin-top: 5px; background: #7A5A20"></span><span><b>Files &amp; tool results</b> — code read, command output, logs</span></div>
+<div class="li pop" style="animation-delay: .9s"><span style="flex: 0 0 14px; height: 14px; border-radius: 3px; margin-top: 5px; background: #F2B544"></span><span><b>Your message</b> — often the smallest part</span></div>
+<div class="li pop" style="animation-delay: 1.05s"><span style="flex: 0 0 14px; height: 14px; border-radius: 3px; margin-top: 5px; background: repeating-linear-gradient(135deg, #5CCFE6 0 3px, #2F7F93 3px 6px)"></span><span><b>Output</b> — billed separately, at a higher rate per token</span></div>
+</div>
+</div>
+</section>
+</section>
+
+<!-- 07 · Long chats compound -->
+<section class="step" data-chapter="02" data-chapter-label="Tokens &amp; budgets" data-title="Long chats compound" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">Long chats compound</h2>
+<p class="p">Because history is re-sent, turn 30 of a conversation pays again for turns 1 to 29. The cost of each turn grows with the chat, so the <b>total cost grows much faster than the number of turns</b>.</p>
+<p class="p">Long, wandering sessions are also worse at the work: stale plans, abandoned approaches and old file versions compete for the model's attention with what's true now.</p>
+<div class="key"><b>Habit:</b> one task, one session. When you switch tasks, clear or start fresh (in Claude Code, <span class="ic">/clear</span>). If you must continue, summarise first (<span class="ic">/compact</span>).</div>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div class="lbl">Input tokens per turn · same ten turns of work · illustrative</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 28px">
+<div style="display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: flex-end; gap: 6px; height: 170px; border-bottom: 1px solid #3A3F47">
+<div class="growy" style="flex: 1 1 0; height: 16px; background: #E07A5F; border-radius: 3px 3px 0 0; animation-delay: .2s"></div>
+<div class="growy" style="flex: 1 1 0; height: 32px; background: #E07A5F; border-radius: 3px 3px 0 0; animation-delay: .28s"></div>
+<div class="growy" style="flex: 1 1 0; height: 48px; background: #E07A5F; border-radius: 3px 3px 0 0; animation-delay: .36s"></div>
+<div class="growy" style="flex: 1 1 0; height: 64px; background: #E07A5F; border-radius: 3px 3px 0 0; animation-delay: .44s"></div>
+<div class="growy" style="flex: 1 1 0; height: 80px; background: #E07A5F; border-radius: 3px 3px 0 0; animation-delay: .52s"></div>
+<div class="growy" style="flex: 1 1 0; height: 96px; background: #E07A5F; border-radius: 3px 3px 0 0; animation-delay: .6s"></div>
+<div class="growy" style="flex: 1 1 0; height: 112px; background: #E07A5F; border-radius: 3px 3px 0 0; animation-delay: .68s"></div>
+<div class="growy" style="flex: 1 1 0; height: 128px; background: #E07A5F; border-radius: 3px 3px 0 0; animation-delay: .76s"></div>
+<div class="growy" style="flex: 1 1 0; height: 144px; background: #E07A5F; border-radius: 3px 3px 0 0; animation-delay: .84s"></div>
+<div class="growy" style="flex: 1 1 0; height: 160px; background: #E07A5F; border-radius: 3px 3px 0 0; animation-delay: .92s"></div>
+</div>
+<div class="h3" style="font-size: 18px">One endless session</div>
+<p class="small">Total sent: <b>55 units</b></p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: flex-end; gap: 6px; height: 170px; border-bottom: 1px solid #3A3F47">
+<div class="growy" style="flex: 1 1 0; height: 16px; background: #5CCFE6; border-radius: 3px 3px 0 0; animation-delay: 1.1s"></div>
+<div class="growy" style="flex: 1 1 0; height: 32px; background: #5CCFE6; border-radius: 3px 3px 0 0; animation-delay: 1.18s"></div>
+<div class="growy" style="flex: 1 1 0; height: 48px; background: #5CCFE6; border-radius: 3px 3px 0 0; animation-delay: 1.26s"></div>
+<div class="growy" style="flex: 1 1 0; height: 16px; background: #5CCFE6; border-radius: 3px 3px 0 0; animation-delay: 1.34s"></div>
+<div class="growy" style="flex: 1 1 0; height: 32px; background: #5CCFE6; border-radius: 3px 3px 0 0; animation-delay: 1.42s"></div>
+<div class="growy" style="flex: 1 1 0; height: 48px; background: #5CCFE6; border-radius: 3px 3px 0 0; animation-delay: 1.5s"></div>
+<div class="growy" style="flex: 1 1 0; height: 16px; background: #5CCFE6; border-radius: 3px 3px 0 0; animation-delay: 1.58s"></div>
+<div class="growy" style="flex: 1 1 0; height: 32px; background: #5CCFE6; border-radius: 3px 3px 0 0; animation-delay: 1.66s"></div>
+<div class="growy" style="flex: 1 1 0; height: 48px; background: #5CCFE6; border-radius: 3px 3px 0 0; animation-delay: 1.74s"></div>
+<div class="growy" style="flex: 1 1 0; height: 16px; background: #5CCFE6; border-radius: 3px 3px 0 0; animation-delay: 1.82s"></div>
+</div>
+<div class="h3" style="font-size: 18px">Fresh session per task</div>
+<p class="small">Total sent: <b>19 units</b> — about a third</p>
+</div>
+</div>
+<p class="small">Model: each turn adds one unit of new content; the work splits into independent tasks of up to three turns. Real numbers vary, but the shape doesn't.</p>
+</div>
+</section>
+</section>
+
+<!-- 08 · Lean prompts -->
+<section class="step" data-chapter="02" data-chapter-label="Tokens &amp; budgets" data-title="Point, don’t paste" hidden>
+<section style="display: flex; flex-direction: column; gap: 28px">
+<div class="col rise" style="max-width: 820px">
+<h2 class="h2">Point, don't paste</h2>
+<p class="p">The cheapest token is the one you never send. A precise request costs less <b>and</b> gets a better answer, because the model isn't hunting for the signal in a pile of noise.</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 20px">
+<div class="panel rise" style="animation-delay: .15s">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px"><span class="lbl" style="color: #F0A08A">Wasteful</span><span class="mono" style="font-size: 13px; color: #9AA0A9">input size</span></div>
+<div class="track" style="height: 16px"><div class="fill grow" style="width: 96%; background: #E07A5F; animation-delay: .5s"></div></div>
+<pre class="code" style="white-space: pre-wrap">Here's my project. [pastes 14 files]
+And the log: [pastes 3,000 lines]
+Something's broken in checkout. Fix it
+and show me all the updated files.</pre>
+<ul class="list">
+<li class="li"><span class="dot" style="background: #E07A5F"></span><span>Whole files the model doesn't need</span></li>
+<li class="li"><span class="dot" style="background: #E07A5F"></span><span>A full log for a single error</span></li>
+<li class="li"><span class="dot" style="background: #E07A5F"></span><span>No symptom, no location, no way to verify</span></li>
+<li class="li"><span class="dot" style="background: #E07A5F"></span><span>“Show all files” multiplies expensive output</span></li>
+</ul>
+</div>
+<div class="panel rise" style="animation-delay: .3s">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px"><span class="lbl" style="color: #8FE0F0">Lean</span><span class="mono" style="font-size: 13px; color: #9AA0A9">input size</span></div>
+<div class="track" style="height: 16px"><div class="fill grow" style="width: 14%; background: #5CCFE6; animation-delay: .7s"></div></div>
+<pre class="code" style="white-space: pre-wrap">In src/cart/total.ts, calculateTotal()
+returns NaN when items is empty.
+Failing test: cart.test.ts:42
+Error (relevant lines only): [8 lines]
+Suggest a minimal fix as a diff.</pre>
+<ul class="list">
+<li class="li"><span class="dot dot-b"></span><span>Names the file and function — the agent reads just that</span></li>
+<li class="li"><span class="dot dot-b"></span><span>States the symptom and how to reproduce it</span></li>
+<li class="li"><span class="dot dot-b"></span><span>Only the error lines that matter</span></li>
+<li class="li"><span class="dot dot-b"></span><span>Asks for a diff: small output, easy to review</span></li>
+</ul>
+</div>
+</div>
+</section>
+</section>
+
+<!-- 09 · Token-saving habits -->
+<section class="step" data-chapter="02" data-chapter-label="Tokens &amp; budgets" data-title="Token-saving habits" hidden>
+<section style="display: flex; flex-direction: column; gap: 28px">
+<div class="col rise" style="max-width: 820px">
+<h2 class="h2">Eight habits for a limited budget</h2>
+<p class="p">None of these make you slower. Most of them make the answers better too.</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 16px">
+<div class="card rise" style="animation-delay: .1s"><span class="mono" style="font-size: 13px; color: #F2B544">01</span><span class="h3" style="font-size: 18px">One task, one session</span><span class="small">Clear or start fresh when you switch tasks. Old context is paid for on every turn.</span></div>
+<div class="card rise" style="animation-delay: .18s"><span class="mono" style="font-size: 13px; color: #F2B544">02</span><span class="h3" style="font-size: 18px">Point, don't paste</span><span class="small">Give file paths, function names and line numbers. Paste only the log lines that matter.</span></div>
+<div class="card rise" style="animation-delay: .26s"><span class="mono" style="font-size: 13px; color: #F2B544">03</span><span class="h3" style="font-size: 18px">Ask for diffs, not files</span><span class="small">Output is the expensive side. “Only the changed lines” and “be brief” both save real money.</span></div>
+<div class="card rise" style="animation-delay: .34s"><span class="mono" style="font-size: 13px; color: #F2B544">04</span><span class="h3" style="font-size: 18px">Compact long sessions</span><span class="small">When you must continue, summarise the state into a short note and carry on from that.</span></div>
+<div class="card rise" style="animation-delay: .42s"><span class="mono" style="font-size: 13px; color: #F2B544">05</span><span class="h3" style="font-size: 18px">Right-size the model</span><span class="small">Small, fast models for renames, boilerplate and search. Large models for design and hard bugs.</span></div>
+<div class="card rise" style="animation-delay: .5s"><span class="mono" style="font-size: 13px; color: #F2B544">06</span><span class="h3" style="font-size: 18px">Keep always-on context lean</span><span class="small">Short CLAUDE.md / rules files. Disconnect MCP servers you aren't using in this project.</span></div>
+<div class="card rise" style="animation-delay: .58s"><span class="mono" style="font-size: 13px; color: #F2B544">07</span><span class="h3" style="font-size: 18px">Let caching work</span><span class="small">Prompt caching discounts a repeated prefix. Keep stable content (instructions, docs) first and unchanged.</span></div>
+<div class="card rise" style="animation-delay: .66s"><span class="mono" style="font-size: 13px; color: #F2B544">08</span><span class="h3" style="font-size: 18px">Stop runaway loops</span><span class="small">If an agent keeps retrying the same failing fix, interrupt, add the missing fact, re-scope.</span></div>
+</div>
+</section>
+</section>
+
+<!-- 10 · Tool use -->
+<section class="step" data-chapter="03" data-chapter-label="Tools &amp; MCP" data-title="Tool use" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">Tool use: how a text model gets hands</h2>
+<p class="p">A model can only produce text. <b>Tool use</b> works by describing tools to it — a name, a description and a JSON schema for the inputs. The model can then reply with a <b>structured tool call</b> instead of prose.</p>
+<p class="p">Your application (the <b>host</b>) runs the call, then sends the result back as part of the next request. The model never executes anything itself; the host decides what actually happens.</p>
+<div class="key"><b>Budget note:</b> tool definitions are part of the input on every request, and every tool result lands in the context. More tools and bigger results mean more tokens.</div>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div class="lbl">One round trip</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<div class="pop" style="animation-delay: .3s; display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 14px; align-items: start"><span class="lbl" style="padding-top: 12px; color: #F7CF7E">1 · You</span><div class="card" style="padding: 12px 14px"><span class="small">Which version of React does this project use?</span></div></div>
+<div class="pop" style="animation-delay: .9s; display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 14px; align-items: start"><span class="lbl" style="padding-top: 12px; color: #8FE0F0">2 · Model</span><pre class="code" style="padding: 12px 14px; font-size: 13px">tool_use: read_file
+input: { "path": "package.json" }</pre></div>
+<div class="pop" style="animation-delay: 1.5s; display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 14px; align-items: start"><span class="lbl" style="padding-top: 12px">3 · Host</span><div class="card" style="padding: 12px 14px"><span class="small">Checks permissions, runs <span class="ic">read_file</span> on your machine</span></div></div>
+<div class="pop" style="animation-delay: 2.1s; display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 14px; align-items: start"><span class="lbl" style="padding-top: 12px">4 · Host</span><pre class="code" style="padding: 12px 14px; font-size: 13px">tool_result:
+"dependencies": { "react": "^18.3.1", … }</pre></div>
+<div class="pop" style="animation-delay: 2.7s; display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 14px; align-items: start"><span class="lbl" style="padding-top: 12px; color: #8FE0F0">5 · Model</span><div class="card" style="padding: 12px 14px"><span class="small">This project uses React 18 (^18.3.1).</span></div></div>
+</div>
+</div>
+</section>
+</section>
+
+<!-- 11 · What MCP is -->
+<section class="step" data-chapter="03" data-chapter-label="Tools &amp; MCP" data-title="What MCP is" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">MCP: one standard plug for tools</h2>
+<p class="p">The <b>Model Context Protocol</b> is an open standard for connecting AI apps to outside systems. Instead of every app writing a custom integration for every service, a service ships one <b>MCP server</b> and any MCP-capable host can use it — like USB for AI tools.</p>
+<p class="p">A server can expose three kinds of things:</p>
+<ul class="list">
+<li class="li"><span class="dot"></span><span><b>Tools</b> — actions the model can call: <span class="ic">create_issue</span>, <span class="ic">query</span></span></li>
+<li class="li"><span class="dot"></span><span><b>Resources</b> — data the app can read into context: files, schemas, records</span></li>
+<li class="li"><span class="dot"></span><span><b>Prompts</b> — reusable templates the server offers to the user</span></li>
+</ul>
+<p class="small">Servers run locally as a subprocess (stdio) or remotely over HTTP. The host's MCP client speaks JSON-RPC to each one.</p>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div class="lbl">Host ⇄ servers</div>
+<div style="display: flex; flex-wrap: wrap; align-items: stretch; gap: 0">
+<div style="flex: 1 1 180px; display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 18px; border-radius: 12px; border: 1px solid #F2B544; background: #1E1A12; box-sizing: border-box">
+<span class="lbl" style="color: #F7CF7E">Host app</span>
+<span class="h3" style="font-size: 18px">Claude Code, an IDE, a chat app</span>
+<span class="node" style="min-height: 36px; font-size: 14px">LLM</span>
+<span class="node" style="min-height: 36px; font-size: 14px; border-color: #5CCFE6; color: #8FE0F0">MCP client</span>
+</div>
+<div style="flex: 2 1 260px; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div class="pop" style="animation-delay: .3s; display: flex; align-items: center; gap: 0"><div class="wire" style="flex: 0 0 56px"></div><div class="card" style="flex: 1 1 auto; padding: 10px 14px; gap: 2px"><b style="font-size: 15px">GitHub</b><span class="mono" style="font-size: 12px; color: #9AA0A9">list_prs · create_issue</span></div></div>
+<div class="pop" style="animation-delay: .45s; display: flex; align-items: center; gap: 0"><div class="wire" style="flex: 0 0 56px"></div><div class="card" style="flex: 1 1 auto; padding: 10px 14px; gap: 2px"><b style="font-size: 15px">Postgres</b><span class="mono" style="font-size: 12px; color: #9AA0A9">list_tables · query</span></div></div>
+<div class="pop" style="animation-delay: .6s; display: flex; align-items: center; gap: 0"><div class="wire" style="flex: 0 0 56px"></div><div class="card" style="flex: 1 1 auto; padding: 10px 14px; gap: 2px"><b style="font-size: 15px">Playwright (browser)</b><span class="mono" style="font-size: 12px; color: #9AA0A9">navigate · click · screenshot</span></div></div>
+<div class="pop" style="animation-delay: .75s; display: flex; align-items: center; gap: 0"><div class="wire" style="flex: 0 0 56px"></div><div class="card" style="flex: 1 1 auto; padding: 10px 14px; gap: 2px"><b style="font-size: 15px">Sentry</b><span class="mono" style="font-size: 12px; color: #9AA0A9">get_issue · search_events</span></div></div>
+<div class="pop" style="animation-delay: .9s; display: flex; align-items: center; gap: 0"><div class="wire" style="flex: 0 0 56px"></div><div class="card" style="flex: 1 1 auto; padding: 10px 14px; gap: 2px; border-style: dashed"><b style="font-size: 15px">Your own server</b><span class="mono" style="font-size: 12px; color: #9AA0A9">wrap any internal API</span></div></div>
+</div>
+</div>
+<p class="small">Server names are examples; tool names are representative. Check each server's docs for its real tool list.</p>
+</div>
+</section>
+</section>
+
+<!-- 12 · MCP in practice -->
+<section class="step" data-chapter="03" data-chapter-label="Tools &amp; MCP" data-title="MCP in practice" hidden>
+<section style="display: flex; flex-direction: column; gap: 28px">
+<div class="col rise" style="max-width: 820px">
+<h2 class="h2">MCP in practice</h2>
+<p class="p">Reach for MCP when the model needs <b>live data or actions in another system</b>. If a command-line tool already does the job (<span class="ic">git</span>, <span class="ic">gh</span>, <span class="ic">psql</span>), the agent can often just run it — no server needed.</p>
+</div>
+<div class="split">
+<div class="panel rise" style="animation-delay: .1s">
+<span class="lbl" style="color: #8FE0F0">Common use cases</span>
+<ul class="list">
+<li class="li"><span class="dot dot-b"></span><span><b>Issue tracker</b> — read the ticket, implement it, link the PR and update the status</span></li>
+<li class="li"><span class="dot dot-b"></span><span><b>Database, read-only</b> — inspect the schema and sample rows so generated queries actually match</span></li>
+<li class="li"><span class="dot dot-b"></span><span><b>Browser automation</b> — open your app, click through the flow, screenshot to verify a UI fix</span></li>
+<li class="li"><span class="dot dot-b"></span><span><b>Current docs</b> — fetch today's library docs instead of relying on what the model learned in training</span></li>
+<li class="li"><span class="dot dot-b"></span><span><b>Observability</b> — pull the real stack trace from your error tracker into the debugging session</span></li>
+</ul>
+</div>
+<div class="panel rise" style="animation-delay: .2s">
+<span class="lbl" style="color: #F7CF7E">Best practices</span>
+<ul class="list">
+<li class="li"><span class="dot"></span><span><b>Enable per project, not globally.</b> Each connected server's tool definitions take context on every request.</span></li>
+<li class="li"><span class="dot"></span><span><b>Least privilege.</b> Read-only DB users, narrowly scoped tokens, never production writes from a dev session.</span></li>
+<li class="li"><span class="dot"></span><span><b>Install only servers you trust.</b> A local server runs code on your machine and sees what you send it.</span></li>
+<li class="li"><span class="dot"></span><span><b>Treat tool output as untrusted.</b> Web pages, tickets and emails can contain prompt-injection text.</span></li>
+<li class="li"><span class="dot"></span><span><b>Keep results small.</b> Filter, paginate and select columns instead of dumping whole tables.</span></li>
+<li class="li"><span class="dot"></span><span><b>Secrets stay in config.</b> Use environment variables or the host's secret store — never paste keys into prompts.</span></li>
+</ul>
+</div>
+</div>
+</section>
+</section>
+
+<!-- 13 · Agents are loops -->
+<section class="step" data-chapter="04" data-chapter-label="Agents" data-title="Agents are loops" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">An agent is a model in a loop</h2>
+<p class="p"><b>Agent = model + tools + a goal, running in a loop.</b> It plans a step, calls a tool, reads the result, and decides what's next — until the goal is met or it needs you. A coding assistant that edits files and runs your tests is an agent.</p>
+<p class="p">There's no new magic here: it's the tool-use round trip from before, repeated, with the model choosing the next tool each time.</p>
+<div class="key"><b>Budget note:</b> every lap is another model call that re-reads the whole growing context. Clear goals and a way to check success (tests, a build, a linter) end the loop sooner.</div>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(3, auto); gap: 10px; align-items: center; justify-items: center; max-width: 440px; width: 100%; margin: 0 auto">
+<span class="chev" aria-hidden="true" style="font-size: 26px">↗</span>
+<div class="node cyc4" style="animation-delay: 0s; width: 100%">Plan</div>
+<span class="chev" aria-hidden="true" style="font-size: 26px">↘</span>
+<div class="node cyc4" style="animation-delay: 3s; width: 100%">Decide</div>
+<div style="width: 100%; min-height: 64px; display: flex; align-items: center; justify-content: center; text-align: center; border-radius: 50%; border: 1px dashed #4A515B; color: #9AA0A9; font-size: 13px; padding: 8px; box-sizing: border-box">goal</div>
+<div class="node cyc4" style="animation-delay: 1s; width: 100%">Act</div>
+<span class="chev" aria-hidden="true" style="font-size: 26px">↖</span>
+<div class="node cyc4" style="animation-delay: 2s; width: 100%">Observe</div>
+<span class="chev" aria-hidden="true" style="font-size: 26px">↙</span>
+</div>
+<div class="lbl">Example trace · “fix the NaN in calculateTotal”</div>
+<div class="code" style="display: flex; flex-direction: column; gap: 4px; white-space: normal">
+<span class="pop" style="animation-delay: .4s"><span style="color: #8FE0F0">▸</span> read src/cart/total.ts</span>
+<span class="pop" style="animation-delay: 1s"><span style="color: #8FE0F0">▸</span> run npm test cart <span style="color: #F0A08A">→ 1 failing</span></span>
+<span class="pop" style="animation-delay: 1.6s"><span style="color: #8FE0F0">▸</span> edit total.ts <span style="color: #9AA0A9">(+3 −1)</span></span>
+<span class="pop" style="animation-delay: 2.2s"><span style="color: #8FE0F0">▸</span> run npm test cart <span style="color: #8FE0F0">→ all passing</span></span>
+<span class="pop" style="animation-delay: 2.8s"><span style="color: #F2B544">✓</span> done — reply with a summary and the diff</span>
+</div>
+</div>
+</section>
+</section>
+
+<!-- 14 · Custom agents -->
+<section class="step" data-chapter="04" data-chapter-label="Agents" data-title="Custom agents vs subagents" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">Custom agents vs subagents</h2>
+<p class="p">Both start as the same thing: a <b>markdown file</b> holding a description, the tools it may use, optionally a model, and its instructions. What differs is <b>who invokes it — and whose context it uses</b>.</p>
+<ul class="list">
+<li class="li"><span class="dot"></span><span><b>Custom agent</b> — <i>you</i> pick it from the agent picker and it takes over your chat. It works inside your conversation, so everything it reads fills <b>your</b> context window.</span></li>
+<li class="li"><span class="dot dot-b"></span><span><b>Subagent</b> — <i>another agent</i> hands it a task. It runs in its <b>own fresh context</b> and sends back only a summary.</span></li>
+</ul>
+<pre class="code"><span style="color: #9AA0A9"># .github/agents/reviewer.agent.md  (Copilot · VS Code)</span>
+---
+description: Reviews changes for bugs, security
+  and missing tests.
+tools: ['search', 'usages']
+user-invocable: true            <span style="color: #9AA0A9"># show in picker</span>
+disable-model-invocation: false <span style="color: #9AA0A9"># allow as subagent</span>
+---
+You are a senior reviewer. Reply with at most
+5 findings, most severe first, with file:line.</pre>
+<pre class="code"><span style="color: #9AA0A9"># .claude/agents/code-reviewer.md  (Claude Code)</span>
+---
+name: code-reviewer
+description: Reviews a diff for bugs, security and
+  missing tests. Use after any code change.
+tools: Read, Grep, Glob
+---
+You are a senior reviewer. …</pre>
+<p class="small">In VS Code, one <span class="ic">.agent.md</span> file can work both ways; the two flags above control which. Claude Code's agent files are used mainly as subagents. Field and tool names vary by tool and version — Visual Studio's Copilot may differ, so check its docs.</p>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 20px">
+<div style="display: flex; flex-direction: column; gap: 12px; min-width: 0">
+<span class="lbl" style="color: #F7CF7E">Selected by you · custom agent</span>
+<div class="node pop" style="animation-delay: .3s; justify-content: space-between; border-color: #F2B544; color: #FBE3B0"><span class="mono" style="font-size: 13px">agent: reviewer</span><span aria-hidden="true">▾</span></div>
+<div class="card" style="gap: 6px">
+<span class="lbl" style="font-size: 11px">Your conversation</span>
+<div class="mono pop" style="animation-delay: .5s; font-size: 12px; padding: 6px 8px; border-radius: 6px; background: #3A2F15; color: #F7CF7E">your messages</div>
+<div class="mono pop" style="animation-delay: .65s; font-size: 12px; padding: 6px 8px; border-radius: 6px; background: #2A2F37; color: #D6DAE0">reviewer instructions</div>
+<div class="mono pop" style="animation-delay: .8s; font-size: 12px; padding: 6px 8px; border-radius: 6px; background: #3D2A20; color: #F0A08A">12 files it read</div>
+<div class="mono pop" style="animation-delay: .95s; font-size: 12px; padding: 6px 8px; border-radius: 6px; background: #3D2A20; color: #F0A08A">full test output</div>
+<span class="lbl" style="font-size: 11px; padding-top: 6px">your context</span>
+<div class="track" style="height: 8px"><div class="fill grow" style="width: 82%; background: #E07A5F; animation-delay: 1.1s"></div></div>
+</div>
+<p class="small">Changes how <b>your</b> chat behaves. Doesn't protect your context.</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px; min-width: 0">
+<span class="lbl" style="color: #8FE0F0">Called by an agent · subagent</span>
+<div class="card pop" style="animation-delay: .3s; gap: 6px; border-color: #F2B544; background: #1E1A12">
+<span class="lbl" style="font-size: 11px; color: #F7CF7E">Main agent · your context</span>
+<div class="track" style="height: 8px"><div class="fill grow" style="width: 22%; background: #F2B544; animation-delay: .5s"></div></div>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; padding-left: 16px"><div class="wirey" style="height: 40px"></div><span class="mono" style="font-size: 12px; color: #9AA0A9">delegates ↓ · summary ↑</span></div>
+<div class="card pop" style="animation-delay: .8s; gap: 6px">
+<b style="font-size: 15px; color: #F4F5F6">reviewer</b>
+<span class="mono" style="font-size: 12px; color: #9AA0A9">reads 12 files, runs tests</span>
+<span class="lbl" style="font-size: 11px">own context</span>
+<div class="track" style="height: 8px"><div class="fill grow" style="width: 78%; background: #5CCFE6; animation-delay: 1.1s"></div></div>
+</div>
+<p class="small">The heavy reading fills <b>its</b> context. Only the conclusions come back to you.</p>
+</div>
+</div>
+<div class="key"><b>Rule of thumb:</b> use a custom agent to change how <i>you</i> work; use a subagent to keep noisy work <i>out</i> of your context.</div>
+</div>
+</section>
+</section>
+
+<!-- 15 · Agents in practice -->
+<section class="step" data-chapter="04" data-chapter-label="Agents" data-title="Agents in practice" hidden>
+<section style="display: flex; flex-direction: column; gap: 28px">
+<div class="col rise" style="max-width: 820px">
+<h2 class="h2">Custom agents &amp; subagents in practice</h2>
+<p class="p">Switch to a <b>custom agent</b> when you want a different way of working. Delegate to a <b>subagent</b> when a job is <b>self-contained, noisy, or parallel</b> — and you only need its conclusion, not every file it read on the way.</p>
+</div>
+<div class="split">
+<div class="panel rise" style="animation-delay: .1s">
+<span class="lbl" style="color: #8FE0F0">Common use cases</span>
+<ul class="list">
+<li class="li"><span class="dot dot-b"></span><span><b>Planner</b> (custom agent) — a read-only mode you switch to for designing an approach before any code is written</span></li>
+<li class="li"><span class="dot dot-b"></span><span><b>Code reviewer</b> — read-only, runs after changes, reports the top findings</span></li>
+<li class="li"><span class="dot dot-b"></span><span><b>Test runner</b> — runs the suite, reports only the failures and likely causes</span></li>
+<li class="li"><span class="dot dot-b"></span><span><b>Codebase explorer</b> — “where is auth handled?” → a short list of files and functions</span></li>
+<li class="li"><span class="dot dot-b"></span><span><b>Docs &amp; changelog writer</b> — turns a diff into release notes in your house style</span></li>
+<li class="li"><span class="dot dot-b"></span><span><b>Parallel investigations</b> — several independent questions answered at once</span></li>
+</ul>
+</div>
+<div class="panel rise" style="animation-delay: .2s">
+<span class="lbl" style="color: #F7CF7E">Best practices</span>
+<ul class="list">
+<li class="li"><span class="dot"></span><span><b>Pick the right mode.</b> A custom agent changes how <i>you</i> work; a subagent keeps noisy work <i>out</i> of your context.</span></li>
+<li class="li"><span class="dot"></span><span><b>One job per agent.</b> Its description is how the main agent decides when to delegate — make it specific.</span></li>
+<li class="li"><span class="dot"></span><span><b>Fewest tools that work.</b> A reviewer doesn't need write access; a researcher doesn't need a shell.</span></li>
+<li class="li"><span class="dot"></span><span><b>Ask for short, structured returns.</b> “Max 5 findings, file:line each” keeps the summary from flooding your context.</span></li>
+<li class="li"><span class="dot"></span><span><b>Match model to task.</b> A smaller model is often enough for search and summarising.</span></li>
+<li class="li"><span class="dot"></span><span><b>Don't over-delegate.</b> Starting an agent has overhead; a two-line edit is cheaper done inline.</span></li>
+<li class="li"><span class="dot"></span><span><b>Verify the result.</b> Agents can be confidently wrong — read the diff and rerun the tests.</span></li>
+<li class="li"><span class="dot"></span><span><b>Commit agent files to the repo</b> so the whole team shares and improves them.</span></li>
+</ul>
+</div>
+</div>
+</section>
+</section>
+
+<!-- 16 · What a skill is -->
+<section class="step" data-chapter="05" data-chapter-label="Skills" data-title="What a skill is" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">Skills: know-how loaded on demand</h2>
+<p class="p">A <b>skill</b> is a folder holding a <span class="ic">SKILL.md</span> file of instructions, plus optional scripts and reference files. It teaches the model one specific procedure — your release checklist, how your team writes migrations, your report format.</p>
+<p class="p">The trick is <b>progressive disclosure</b>. Up front, only each skill's name and one-line description sit in context. When a task matches, the model reads the full SKILL.md. Extra files are opened only if that step needs them. You can install many skills and pay for few.</p>
+<pre class="code"><span style="color: #9AA0A9">.claude/skills/db-migration/</span>
+├─ SKILL.md
+├─ reference/conventions.md
+└─ scripts/new_migration.sh</pre>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div class="lbl">Three levels of loading</div>
+<div class="card pop" style="animation-delay: .3s">
+<div style="display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap"><b style="color: #F4F5F6">1 · Name + description</b><span class="mono" style="font-size: 12px; color: #8FE0F0">always in context · tiny</span></div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<span class="tok tok-b" style="font-size: 13px">db-migration</span><span class="tok tok-b" style="font-size: 13px">release-notes</span><span class="tok tok-b" style="font-size: 13px">api-endpoint</span><span class="tok tok-b" style="font-size: 13px">a11y-audit</span><span class="tok tok-b" style="font-size: 13px">pr-description</span>
+</div>
+</div>
+<div class="card pop" style="animation-delay: 1s; border-color: #F2B544">
+<div style="display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap"><b style="color: #F4F5F6">2 · SKILL.md body</b><span class="mono" style="font-size: 12px; color: #F7CF7E">loaded when a task matches</span></div>
+<pre class="code" style="font-size: 13px; padding: 12px 14px">---
+name: db-migration
+description: Create a reversible Postgres migration
+  using team conventions. Use when the user asks
+  to change the database schema.
+---
+1. Run scripts/new_migration.sh &lt;name&gt;
+2. Write up() and down(); follow reference/…</pre>
+</div>
+<div class="card pop" style="animation-delay: 1.7s">
+<div style="display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap"><b style="color: #F4F5F6">3 · Scripts &amp; references</b><span class="mono" style="font-size: 12px; color: #9AA0A9">read or run only if needed</span></div>
+<span class="small">A script runs without its code ever entering the context — only its output does.</span>
+</div>
+</div>
+</section>
+</section>
+
+<!-- 17 · Which one when -->
+<section class="step" data-chapter="05" data-chapter-label="Skills" data-title="Rules, skills, MCP or agents?" hidden>
+<section style="display: flex; flex-direction: column; gap: 28px">
+<div class="col rise" style="max-width: 860px">
+<h2 class="h2">Rules, skills, MCP or agents?</h2>
+<p class="p">They solve different problems and work well together. Ask what the model is missing: <b>knowledge</b>, <b>a procedure</b>, <b>access</b>, or <b>room to work</b>.</p>
+</div>
+<div class="panel rise" style="animation-delay: .15s; padding: 8px 8px 0">
+<div style="overflow-x: auto">
+<table style="width: 100%; min-width: 760px; border-collapse: collapse">
+<thead><tr><th style="width: 18%">Mechanism</th><th style="width: 24%">What it is</th><th style="width: 24%">In context when</th><th>Use it for</th></tr></thead>
+<tbody>
+<tr class="pop" style="animation-delay: .3s"><td><b>Project rules</b><br><span class="mono" style="font-size: 12px; color: #9AA0A9">CLAUDE.md, rules files</span></td><td>Always-on facts and conventions</td><td>Every request — keep it short</td><td>Build and test commands, code style, “never edit /legacy”</td></tr>
+<tr class="pop" style="animation-delay: .5s"><td><b>Skill</b><br><span class="mono" style="font-size: 12px; color: #9AA0A9">SKILL.md + files</span></td><td>A packaged procedure, with optional scripts</td><td>Description always; body only when a task matches</td><td>Repeatable workflows: migrations, release notes, report formats</td></tr>
+<tr class="pop" style="animation-delay: .7s"><td><b>MCP server</b><br><span class="mono" style="font-size: 12px; color: #9AA0A9">tools, resources</span></td><td>A connection to an outside system</td><td>Tool definitions every request; data when called</td><td>Live data and actions: tickets, databases, browsers, error trackers</td></tr>
+<tr class="pop" style="animation-delay: .9s"><td><b>Custom agent</b><br><span class="mono" style="font-size: 12px; color: #9AA0A9">.agent.md, picked by you</span></td><td>A role for your own chat: instructions plus a tool set</td><td>While selected — and everything it reads lands in your context</td><td>Switching how you work: planner, reviewer, docs writer</td></tr>
+<tr class="pop" style="animation-delay: 1.1s"><td style="border-bottom: 0"><b>Subagent</b><br><span class="mono" style="font-size: 12px; color: #9AA0A9">called by another agent</span></td><td style="border-bottom: 0">A delegated worker with its own context</td><td style="border-bottom: 0">Only its summary returns to you</td><td style="border-bottom: 0">Noisy or parallel work: reviews, test runs, exploration</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 12px">
+<div class="card rise" style="animation-delay: 1.1s"><span class="lbl">Need to know something?</span><b style="color: #F4F5F6">Rules, or a skill</b></div>
+<div class="card rise" style="animation-delay: 1.2s"><span class="lbl">Need to reach something?</span><b style="color: #F4F5F6">An MCP server</b></div>
+<div class="card rise" style="animation-delay: 1.3s"><span class="lbl">Need a different way of working?</span><b style="color: #F4F5F6">A custom agent</b></div>
+<div class="card rise" style="animation-delay: 1.4s"><span class="lbl">Need to offload work?</span><b style="color: #F4F5F6">A subagent</b></div>
+</div>
+</section>
+</section>
+
+<!-- 18 · Skills in practice -->
+<section class="step" data-chapter="05" data-chapter-label="Skills" data-title="Skills in practice" hidden>
+<section style="display: flex; flex-direction: column; gap: 28px">
+<div class="col rise" style="max-width: 820px">
+<h2 class="h2">Skills in practice</h2>
+<p class="p">Write a skill when you notice yourself <b>explaining the same procedure to the AI twice</b>. Write it once, and the model picks it up whenever the task comes around.</p>
+</div>
+<div class="split">
+<div class="panel rise" style="animation-delay: .1s">
+<span class="lbl" style="color: #8FE0F0">Common use cases</span>
+<ul class="list">
+<li class="li"><span class="dot dot-b"></span><span><b>Team conventions</b> — commit messages, PR descriptions, branch naming</span></li>
+<li class="li"><span class="dot dot-b"></span><span><b>Scaffolding</b> — a new endpoint, component or service that follows the house pattern</span></li>
+<li class="li"><span class="dot dot-b"></span><span><b>Checklists</b> — release steps, security review, accessibility audit</span></li>
+<li class="li"><span class="dot dot-b"></span><span><b>Documents &amp; data</b> — your report format, spreadsheet layouts, API docs style</span></li>
+<li class="li"><span class="dot dot-b"></span><span><b>Repetitive transforms</b> — migrating calls to a new API version across a codebase</span></li>
+</ul>
+</div>
+<div class="panel rise" style="animation-delay: .2s">
+<span class="lbl" style="color: #F7CF7E">Best practices</span>
+<ul class="list">
+<li class="li"><span class="dot"></span><span><b>Write the description as a trigger.</b> Say what it does <i>and</i> when to use it — it's all the model sees up front.</span></li>
+<li class="li"><span class="dot"></span><span><b>Keep SKILL.md focused.</b> Move long references into separate files it links to, so they load only when needed.</span></li>
+<li class="li"><span class="dot"></span><span><b>Script the deterministic steps.</b> Running a script is cheaper and more reliable than having the model regenerate the same code.</span></li>
+<li class="li"><span class="dot"></span><span><b>Show one good example</b> of the output you expect.</span></li>
+<li class="li"><span class="dot"></span><span><b>Test the trigger.</b> Try prompts that should use it and prompts that shouldn't.</span></li>
+<li class="li"><span class="dot"></span><span><b>Commit project skills to the repo</b> so the team shares and versions them.</span></li>
+<li class="li"><span class="dot"></span><span><b>Only install skills you trust.</b> They can ship executable scripts.</span></li>
+</ul>
+</div>
+</div>
+</section>
+</section>
+
+<!-- 19 · Cheat sheet -->
+<section class="step" data-chapter="06" data-chapter-label="Cheat sheet" data-title="Cheat sheet" hidden>
+<section style="display: flex; flex-direction: column; gap: 28px">
+<div class="col rise" style="max-width: 820px">
+<h2 class="h2">Cheat sheet</h2>
+<p class="p">Everything on one screen. If you remember one sentence: <b>every request re-sends the context, so keep the context small, relevant and current.</b></p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); gap: 16px">
+<div class="card rise" style="animation-delay: .1s; padding: 22px; gap: 12px"><span class="mono" style="font-size: 13px; color: #F2B544">01 · How LLMs work</span><ul class="list" style="gap: 8px"><li class="li" style="font-size: 15px"><span class="dot"></span><span>Predicts one token at a time, in a loop</span></li><li class="li" style="font-size: 15px"><span class="dot"></span><span>Plausible, not verified — test the output</span></li><li class="li" style="font-size: 15px"><span class="dot"></span><span>No memory; only the context window</span></li></ul></div>
+<div class="card rise" style="animation-delay: .2s; padding: 22px; gap: 12px"><span class="mono" style="font-size: 13px; color: #F2B544">02 · Tokens</span><ul class="list" style="gap: 8px"><li class="li" style="font-size: 15px"><span class="dot"></span><span>≈ 4 characters of English per token</span></li><li class="li" style="font-size: 15px"><span class="dot"></span><span>One task, one session; compact when long</span></li><li class="li" style="font-size: 15px"><span class="dot"></span><span>Point, don't paste; ask for diffs</span></li></ul></div>
+<div class="card rise" style="animation-delay: .3s; padding: 22px; gap: 12px"><span class="mono" style="font-size: 13px; color: #F2B544">03 · MCP</span><ul class="list" style="gap: 8px"><li class="li" style="font-size: 15px"><span class="dot"></span><span>Standard plug to outside systems</span></li><li class="li" style="font-size: 15px"><span class="dot"></span><span>Enable per project; tool defs cost tokens</span></li><li class="li" style="font-size: 15px"><span class="dot"></span><span>Least privilege; outputs are untrusted</span></li></ul></div>
+<div class="card rise" style="animation-delay: .4s; padding: 22px; gap: 12px"><span class="mono" style="font-size: 13px; color: #F2B544">04 · Agents</span><ul class="list" style="gap: 8px"><li class="li" style="font-size: 15px"><span class="dot"></span><span>Model + tools + goal, in a loop</span></li><li class="li" style="font-size: 15px"><span class="dot"></span><span>Custom agent = your chat's role; subagent = separate context</span></li><li class="li" style="font-size: 15px"><span class="dot"></span><span>One job, fewest tools, short returns</span></li></ul></div>
+<div class="card rise" style="animation-delay: .5s; padding: 22px; gap: 12px"><span class="mono" style="font-size: 13px; color: #F2B544">05 · Skills</span><ul class="list" style="gap: 8px"><li class="li" style="font-size: 15px"><span class="dot"></span><span>Procedures loaded only when relevant</span></li><li class="li" style="font-size: 15px"><span class="dot"></span><span>The description is the trigger</span></li><li class="li" style="font-size: 15px"><span class="dot"></span><span>Script the deterministic parts</span></li></ul></div>
+</div>
+</section>
+</section>
+
+
+</main>
+
+<footer class="controls">
+<button type="button" class="navbtn" data-prev aria-label="Previous step"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg><span>Back</span></button>
+<div class="segments" role="group" aria-label="Steps" data-segments></div>
+<span class="hint"><kbd>←</kbd> <kbd>→</kbd> to step</span>
+<button type="button" class="navbtn" data-replay aria-label="Replay this step's animation"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path></svg><span>Replay</span></button>
+<button type="button" class="navbtn primary" data-next><span data-next-label>Next</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg></button>
+</footer>
+
+</div>
+<script src="../assets/explainer.js"></script>
+</body>
+</html>
