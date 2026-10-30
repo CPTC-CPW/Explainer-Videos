@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Explainers</title>
+<meta name="description" content="Step-through animated explainers for concepts and technologies.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="assets/explainer.css">
+</head>
+<body>
+<div class="shell">
+
+<header class="topbar">
+<a class="brand" href="./">
+<svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true" style="flex: 0 0 auto"><rect x="2" y="2" width="10" height="10" rx="3" fill="#F2B544"></rect><rect x="16" y="2" width="10" height="10" rx="3" fill="none" stroke="#5CCFE6" stroke-width="2"></rect><rect x="2" y="16" width="10" height="10" rx="3" fill="none" stroke="#5CCFE6" stroke-width="2"></rect><rect x="16" y="16" width="10" height="10" rx="3" fill="#5CCFE6"></rect></svg>
+<span class="brand-name">Explainers</span>
+</a>
+</header>
+
+<main class="stage" style="gap: 48px; padding-top: 64px">
+<section class="hero rise">
+<div class="lbl" style="color: #F2B544">Concepts &amp; technologies, one step at a time</div>
+<h1 class="h2" style="font-size: clamp(40px, 6vw, 72px)">Explainers</h1>
+<p class="p">Animated, step-through explanations. Move at your own pace with <b>Back</b> and <b>Next</b> or the arrow keys, replay any step, and share a link straight to the step you need.</p>
+</section>
+
+<section aria-labelledby="all-explainers" style="display: flex; flex-direction: column; gap: 20px">
+<h2 id="all-explainers" class="lbl">All explainers</h2>
+<div class="catalog">
+
+<!-- One card per explainer. Copy this <article> to add a new one. -->
+<article class="explainer-card rise" style="animation-delay: .1s">
+<span class="lbl" style="color: #8FE0F0">AI for developers</span>
+<h3 class="h3" style="font-size: 26px"><a href="how-ai-works/">How AI Works</a></h3>
+<p class="small">How large language models actually work, how to stretch a limited token budget, and how MCP servers, custom agents, subagents and skills fit together — with best practices and common use cases.</p>
+<div class="chips"><span class="chip">LLMs</span><span class="chip">Tokens</span><span class="chip">MCP</span><span class="chip">Agents</span><span class="chip">Skills</span></div>
+<div class="card-foot"><span class="mono" style="font-size: 13px; color: #9AA0A9">6 chapters · 19 steps</span><span class="open" aria-hidden="true">Open <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg></span></div>
+</article>
+
+</div>
+</section>
+</main>
+
+<footer class="site-foot">Source on <a href="https://github.com/CPTC-CPW/Explainer-Videos">GitHub</a>.</footer>
+
+</div>
+</body>
+</html>
