@@ -5,9 +5,11 @@ Each explainer is a single static HTML page that students step through at their 
 
 ## Explainers
 
-| Explainer | Folder | Covers |
-| --- | --- | --- |
-| How AI Works | [`how-ai-works/`](how-ai-works/) | LLM fundamentals, token budgets, MCP servers, custom agents vs subagents, skills |
+| Explainer | Topic | Folder | Covers |
+| --- | --- | --- | --- |
+| How AI Works | AI | [`how-ai-works/`](how-ai-works/) | LLM fundamentals, token budgets, MCP servers, custom agents vs subagents, skills |
+
+The landing page has a topic filter (**All**, **AI**, **SQL**). Picking one updates the address, so you can share a filtered list, e.g. `https://cptc-cpw.github.io/Explainer-Videos/?topic=sql`.
 
 ## Using an explainer
 
@@ -31,6 +33,7 @@ GitHub Free only serves Pages from public repositories. The `.nojekyll` file tel
 index.html               landing page listing every explainer
 assets/explainer.css     shared styles and animations
 assets/explainer.js      shared step engine (tabs, progress bar, keys, #step-N links)
+assets/catalog.js        landing page topic filter (?topic=… links)
 how-ai-works/index.html  one folder per explainer
 ```
 
@@ -47,6 +50,8 @@ how-ai-works/index.html  one folder per explainer
 
    Steps that share a `data-chapter` are grouped under one chapter tab. Step links (`#step-1`, `#step-2`, …) are numbered automatically in page order.
 3. Add a card for it to the landing page (`index.html`): copy the `<article class="explainer-card">` block and change the link, title, description and chips.
-4. Add a row to the table above.
+4. Set the card's topic: `data-topic="sql"` on the `<article>`, and the matching badge in its `card-head` (`<span class="topic topic-sql">SQL</span>`). The filter counts cards by `data-topic`, and a topic with no cards gets no button.
+   - **New topic?** Add a filter button (`data-topic-filter="…"`) in `index.html` and a `.topic-…` badge colour in `assets/explainer.css`.
+5. Add a row to the table above.
 
 Reusable building blocks in `assets/explainer.css`: `.split` (text + visual columns), `.panel`, `.card`, `.key` (callout), `.code`, `.tok` / `.tok-a` / `.tok-b` (token chips), `.row` + `.track` + `.fill` (bar charts), `.list` + `.li` + `.dot` (bullets). Animation classes: `.rise`, `.pop`, `.grow`, `.growy`, `.cyc`, `.cyc4`, `.wire`, `.wirey`; stagger them with an inline `animation-delay`.

@@ -29,11 +29,22 @@
 
 <section aria-labelledby="all-explainers" style="display: flex; flex-direction: column; gap: 20px">
 <h2 id="all-explainers" class="lbl">All explainers</h2>
+
+<!-- Topic filter (assets/catalog.js). Hidden until the script runs, so without JS every card shows.
+     A topic with no explainers yet gets no button. Add a button here when you add a new topic. -->
+<div class="filter" role="group" aria-label="Filter by topic" data-filter hidden>
+<button type="button" class="tab" data-topic-filter="all" aria-pressed="true"><span data-label>All</span><span class="mono" style="opacity: 0.7" data-count></span></button>
+<button type="button" class="tab" data-topic-filter="ai" aria-pressed="false"><span data-label>AI</span><span class="mono" style="opacity: 0.7" data-count></span></button>
+<button type="button" class="tab" data-topic-filter="sql" aria-pressed="false"><span data-label>SQL</span><span class="mono" style="opacity: 0.7" data-count></span></button>
+</div>
+<p class="sr-only" aria-live="polite" data-filter-status></p>
+
 <div class="catalog">
 
-<!-- One card per explainer. Copy this <article> to add a new one. -->
-<article class="explainer-card rise" style="animation-delay: .1s">
-<span class="lbl" style="color: #8FE0F0">AI for developers</span>
+<!-- One card per explainer. Copy this <article> to add a new one; set data-topic and the badge to
+     match a filter button above (topic-ai, topic-sql). -->
+<article class="explainer-card rise" style="animation-delay: .1s" data-topic="ai">
+<div class="card-head"><span class="topic topic-ai">AI</span><span class="lbl" style="color: #8FE0F0">AI for developers</span></div>
 <h3 class="h3" style="font-size: 26px"><a href="how-ai-works/">How AI Works</a></h3>
 <p class="small">How large language models actually work, how to stretch a limited token budget, and how MCP servers, custom agents, subagents and skills fit together — with best practices and common use cases.</p>
 <div class="chips"><span class="chip">LLMs</span><span class="chip">Tokens</span><span class="chip">MCP</span><span class="chip">Agents</span><span class="chip">Skills</span></div>
@@ -47,5 +58,6 @@
 <footer class="site-foot">Source on <a href="https://github.com/CPTC-CPW/Explainer-Videos">GitHub</a>.</footer>
 
 </div>
+<script src="assets/catalog.js"></script>
 </body>
 </html>
