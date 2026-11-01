@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How a SELECT Query Works · Explainers</title>
+<meta name="description" content="A step-through animated explainer of how a basic SQL SELECT query works, clause by clause, using the AP database — for SQL Server students.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../assets/explainer.css">
+<noscript><style>.step[hidden]{display:block;margin-bottom:64px}.controls,.chapters,.eyebrow{display:none}</style></noscript>
+</head>
+<body>
+<a class="skip" href="#stage">Skip to content</a>
+<div class="shell">
+
+<header class="topbar">
+<a class="brand" href="../" aria-label="All explainers">
+<svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true" style="flex: 0 0 auto"><rect x="2" y="2" width="10" height="10" rx="3" fill="#F2B544"></rect><rect x="16" y="2" width="10" height="10" rx="3" fill="none" stroke="#5CCFE6" stroke-width="2"></rect><rect x="2" y="16" width="10" height="10" rx="3" fill="none" stroke="#5CCFE6" stroke-width="2"></rect><rect x="16" y="16" width="10" height="10" rx="3" fill="#5CCFE6"></rect></svg>
+<span class="brand-name">How a SELECT Query Works</span>
+<span class="lbl">← all explainers</span>
+</a>
+<nav class="chapters" aria-label="Chapters" data-chapters></nav>
+</header>
+
+<main class="stage" id="stage" data-explainer>
+<div class="lbl eyebrow" data-eyebrow aria-live="polite"></div>
+
+
+<!-- 01 · Meet the AP database -->
+<section class="step" data-chapter="01" data-chapter-label="The AP database" data-title="Meet the AP database" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">Meet the AP database</h2>
+<p class="p">Every example here runs against <b>AP</b>, the accounts payable database you build in class with <span class="ic">create_ap.sql</span>. It tracks the bills a small company owes: who sent them, how much, and whether they've been paid.</p>
+<p class="p">Each table stores one kind of thing. <b>Vendors</b> are the companies that send bills, <b>Invoices</b> are the bills, and the other tables add detail. Tables point at each other through <b>key columns</b>: an invoice's <span class="ic">VendorID</span> says which vendor sent it.</p>
+<p class="p">This explainer stays inside one table at a time, mostly <b>Invoices</b>. Combining tables is the job of the <a href="../sql-joins/">joins explainer</a>.</p>
+<div class="key"><b>Key idea:</b> a table is a grid. Each <b>row</b> is one thing (one invoice); each <b>column</b> is one fact about it (its total, its date). Queries pick rows and columns out of that grid.</div>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div class="lbl">The AP tables · row counts from a fresh database</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 12px">
+<div class="card pop" style="animation-delay: .3s"><span class="h3 mono" style="font-size: 18px">Vendors</span><span class="mono small">122 rows</span><span class="small">Companies we buy from</span><span class="mono" style="font-size: 13px"><span class="k k1">VendorID</span> <span class="k k3">DefaultTermsID</span></span></div>
+<div class="card pop" style="animation-delay: .45s; border-color: #4A3B1C"><span class="h3 mono" style="font-size: 18px; color: #F7CF7E">Invoices</span><span class="mono small">114 rows</span><span class="small">The bills they send us</span><span class="mono" style="font-size: 13px"><span class="k k2">InvoiceID</span> <span class="k k1">VendorID</span> <span class="k k3">TermsID</span></span></div>
+<div class="card pop" style="animation-delay: .6s"><span class="h3 mono" style="font-size: 18px">InvoiceLineItems</span><span class="mono small">118 rows</span><span class="small">What each bill was for</span><span class="mono" style="font-size: 13px"><span class="k k2">InvoiceID</span> <span class="k k4">AccountNo</span></span></div>
+<div class="card pop" style="animation-delay: .75s"><span class="h3 mono" style="font-size: 18px">Terms</span><span class="mono small">5 rows</span><span class="small">Due in 10, 20, 30, 60 or 90 days</span><span class="mono" style="font-size: 13px"><span class="k k3">TermsID</span></span></div>
+<div class="card pop" style="animation-delay: .9s"><span class="h3 mono" style="font-size: 18px">GLAccounts</span><span class="mono small">75 rows</span><span class="small">Expense categories</span><span class="mono" style="font-size: 13px"><span class="k k4">AccountNo</span></span></div>
+</div>
+<p class="small">Same colour, same key: an invoice's <span class="k k1">VendorID</span> matches one vendor's <span class="k k1">VendorID</span>. AP also has <b>ContactUpdates</b> and <b>InvoiceArchive</b>, which we won't need here.</p>
+</div>
+</section>
+</section>
+
+<!-- 02 · A query asks a question -->
+<section class="step" data-chapter="01" data-chapter-label="The AP database" data-title="A query asks a question" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">A query asks a question</h2>
+<p class="p">A <span class="ic">SELECT</span> statement is a question you ask the database: <i>“which invoices haven't been paid yet?”</i> SQL Server reads the table, works out the answer and hands it back as a <b>result set</b>.</p>
+<p class="p">The result set is itself a little table, with rows and columns. It only exists for that moment: SSMS shows it in the Results grid, and that's it.</p>
+<div class="key"><b>Good to know:</b> <span class="ic">SELECT</span> only <b>reads</b>. It never adds, changes or deletes data, so you can experiment freely. Run it a hundred times and the Invoices table still has 114 rows.</div>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div class="lbl">Question in, table out</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+<div class="node cyc" style="animation-delay: 0s">Invoices · 114 rows</div>
+<span class="chev" aria-hidden="true">›</span>
+<div class="node cyc" style="animation-delay: 1.25s">Your query</div>
+<span class="chev" aria-hidden="true">›</span>
+<div class="node cyc" style="animation-delay: 2.5s">SQL Server</div>
+<span class="chev" aria-hidden="true">›</span>
+<div class="node cyc" style="animation-delay: 3.75s">Result set · 11 rows</div>
+</div>
+<pre class="sql pop" style="animation-delay: .4s"><span class="kw">SELECT</span> InvoiceNumber, InvoiceDate, InvoiceTotal
+<span class="kw">FROM</span> Invoices
+<span class="kw">WHERE</span> PaymentDate <span class="kw">IS NULL</span>
+<span class="kw">ORDER BY</span> InvoiceTotal <span class="kw">DESC</span>;</pre>
+<div class="tbl-cap"><span class="lbl">Result set · first 4 of 11 rows</span></div>
+<div class="tbl-wrap">
+<table class="tbl">
+<thead><tr><th>InvoiceNumber</th><th>InvoiceDate</th><th class="r">InvoiceTotal</th></tr></thead>
+<tbody>
+<tr class="hit" style="animation-delay: .9s"><td>P-0608</td><td>2023-01-23</td><td class="r">20551.18</td></tr>
+<tr class="hit" style="animation-delay: 1.05s"><td>0-2436</td><td>2023-01-31</td><td class="r">10976.06</td></tr>
+<tr class="hit" style="animation-delay: 1.2s"><td>31361833</td><td>2023-01-21</td><td class="r">579.42</td></tr>
+<tr class="hit" style="animation-delay: 1.35s"><td>9982771</td><td>2023-01-24</td><td class="r">503.20</td></tr>
+</tbody>
+</table>
+</div>
+<p class="small">By the end of this explainer you'll be able to read every line of that query, and say why each one is where it is.</p>
+</div>
+</section>
+</section>
+
+<!-- 03 · Written order vs run order -->
+<section class="step" data-chapter="02" data-chapter-label="Anatomy" data-title="Written order vs run order" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">You write it in one order. SQL Server runs it in another.</h2>
+<p class="p">A <span class="ic">SELECT</span> is built from <b>clauses</b>, each starting with a keyword. They must be written in a fixed order, and <span class="ic">SELECT</span> comes first, even though it isn't what happens first.</p>
+<p class="p">SQL Server first finds the table (<span class="ic">FROM</span>), then throws away rows that don't match (<span class="ic">WHERE</span>), then builds the columns you asked for (<span class="ic">SELECT</span>), and only then sorts what's left (<span class="ic">ORDER BY</span>).</p>
+<p class="p">Only <span class="ic">SELECT</span> and <span class="ic">FROM</span> are required. <span class="ic">GROUP BY</span> and <span class="ic">HAVING</span> belong to <a href="../sql-summary-queries/">summary queries</a>; we'll skip them here.</p>
+<div class="key"><b>Key idea:</b> keep the <b>run order</b> in your head: <b>FROM → WHERE → SELECT → ORDER BY</b>. It explains most of the “why doesn't this work?” moments in SQL. Each of the next chapters is one stop on that line.</div>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div class="lbl">The order you write the clauses</div>
+<pre class="sql"><span class="num">1</span>  <span class="kw">SELECT</span>    <span class="cm">-- which columns</span>
+<span class="num">2</span>  <span class="kw">FROM</span>      <span class="cm">-- which table</span>
+<span class="num">3</span>  <span class="kw">WHERE</span>     <span class="cm">-- which rows</span>
+<span class="dim"><span class="num">4</span>  <span class="kw">GROUP BY</span>  <span class="cm">-- summary queries</span>
+<span class="num">5</span>  <span class="kw">HAVING</span>    <span class="cm">-- summary queries</span></span>
+<span class="num">6</span>  <span class="kw">ORDER BY</span>  <span class="cm">-- what order</span></pre>
+<div class="lbl">The order SQL Server runs them</div>
+<div class="strip">
+<span class="node cyc4" style="animation-delay: 0s">1 · FROM</span>
+<span class="chev" aria-hidden="true">›</span>
+<span class="node cyc4" style="animation-delay: 1s">2 · WHERE</span>
+<span class="chev" aria-hidden="true">›</span>
+<span class="node cyc4" style="animation-delay: 2s">3 · SELECT</span>
+<span class="chev" aria-hidden="true">›</span>
+<span class="node cyc4" style="animation-delay: 3s">4 · ORDER BY</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 12px">
+<div class="card pop" style="animation-delay: .4s"><span class="lbl">FROM</span><span class="small">Start with every row of the table</span></div>
+<div class="card pop" style="animation-delay: .55s"><span class="lbl">WHERE</span><span class="small">Keep only the rows that match</span></div>
+<div class="card pop" style="animation-delay: .7s"><span class="lbl">SELECT</span><span class="small">Pick and calculate the columns</span></div>
+<div class="card pop" style="animation-delay: .85s"><span class="lbl">ORDER BY</span><span class="small">Sort the finished rows</span></div>
+</div>
+</div>
+</section>
+</section>
+
+<!-- 04 · FROM -->
+<section class="step" data-chapter="03" data-chapter-label="FROM" data-title="FROM picks the table" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">FROM: start with the whole table</h2>
+<p class="p">Everything starts with <span class="ic">FROM</span>. It names the table to read, and at this point <b>every row</b> is still in play: all 114 invoices.</p>
+<p class="p">The shortest useful query is <span class="ic">SELECT * FROM Invoices</span>. The <span class="ic">*</span> means “every column”, so you get all 10 columns of all 114 rows. It's handy for a quick look at a table you don't know yet.</p>
+<p class="p">Rows come back in <b>no promised order</b>. They often look sorted by the key, but SQL Server doesn't guarantee it unless you ask with <span class="ic">ORDER BY</span>.</p>
+<div class="key"><b>Habit:</b> use <span class="ic">*</span> to explore, then list the columns you actually need. Named columns are easier to read and keep working if someone adds a column to the table later.</div>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div class="strip" aria-label="Run order, this step is FROM"><span class="node on">FROM</span><span class="chev" aria-hidden="true">›</span><span class="node off">WHERE</span><span class="chev" aria-hidden="true">›</span><span class="node off">SELECT</span><span class="chev" aria-hidden="true">›</span><span class="node off">ORDER BY</span></div>
+<pre class="sql"><span class="dim"><span class="kw">SELECT</span> *</span>
+<span class="hl"><span class="kw">FROM</span> Invoices</span>;</pre>
+<div class="tbl-cap"><span class="lbl">8 of 114 rows · all 10 columns</span><span class="mono small">scroll →</span></div>
+<div class="tbl-wrap">
+<table class="tbl">
+<thead><tr><th class="r">InvoiceID</th><th class="r">VendorID</th><th>InvoiceNumber</th><th>InvoiceDate</th><th class="r">InvoiceTotal</th><th class="r">PaymentTotal</th><th class="r">CreditTotal</th><th class="r">TermsID</th><th>InvoiceDueDate</th><th>PaymentDate</th></tr></thead>
+<tbody>
+<tr class="hit" style="animation-delay: .3s"><td class="r">1</td><td class="r">122</td><td>989319-457</td><td>2022-10-08</td><td class="r">3813.33</td><td class="r">3813.33</td><td class="r">0.00</td><td class="r">3</td><td>2022-11-08</td><td>2022-11-07</td></tr>
+<tr class="hit" style="animation-delay: .4s"><td class="r">2</td><td class="r">123</td><td>263253241</td><td>2022-10-10</td><td class="r">40.20</td><td class="r">40.20</td><td class="r">0.00</td><td class="r">3</td><td>2022-11-10</td><td>2022-11-14</td></tr>
+<tr class="hit" style="animation-delay: .5s"><td class="r">9</td><td class="r">121</td><td>97/488</td><td>2022-10-24</td><td class="r">601.95</td><td class="r">601.95</td><td class="r">0.00</td><td class="r">3</td><td>2022-11-24</td><td>2022-11-21</td></tr>
+<tr class="hit" style="animation-delay: .6s"><td class="r">15</td><td class="r">48</td><td>P02-88D77S7</td><td>2022-11-03</td><td class="r">856.92</td><td class="r">856.92</td><td class="r">0.00</td><td class="r">3</td><td>2022-12-02</td><td>2022-11-30</td></tr>
+<tr class="hit" style="animation-delay: .7s"><td class="r">78</td><td class="r">121</td><td>97/522</td><td>2022-12-28</td><td class="r">1962.13</td><td class="r">1762.13</td><td class="r">200.00</td><td class="r">3</td><td>2023-01-28</td><td>2023-01-30</td></tr>
+<tr class="hit" style="animation-delay: .8s"><td class="r">89</td><td class="r">72</td><td>39104</td><td>2023-01-10</td><td class="r">85.31</td><td class="r">0.00</td><td class="r">0.00</td><td class="r">3</td><td>2023-02-09</td><td class="null">NULL</td></tr>
+<tr class="hit" style="animation-delay: .9s"><td class="r">102</td><td class="r">110</td><td>P-0608</td><td>2023-01-23</td><td class="r">20551.18</td><td class="r">0.00</td><td class="r">1200.00</td><td class="r">3</td><td>2023-02-22</td><td class="null">NULL</td></tr>
+<tr class="hit" style="animation-delay: 1s"><td class="r">112</td><td class="r">110</td><td>0-2436</td><td>2023-01-31</td><td class="r">10976.06</td><td class="r">0.00</td><td class="r">0.00</td><td class="r">3</td><td>2023-03-01</td><td class="null">NULL</td></tr>
+</tbody>
+</table>
+</div>
+<p class="small">We'll follow these same 8 invoices through every clause. They're real rows, picked so each clause visibly changes something.</p>
+</div>
+</section>
+</section>
+
+<!-- 05 · WHERE -->
+<section class="step" data-chapter="04" data-chapter-label="WHERE" data-title="WHERE filters rows" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">WHERE: keep only the rows that match</h2>
+<p class="p"><span class="ic">WHERE</span> runs second. It checks a <b>condition</b> against each row, one at a time. If the condition is true for that row, the row stays. If not, it's gone for the rest of the query.</p>
+<p class="p">Here the condition is <span class="ic">InvoiceTotal &gt; 1000</span>. Of our 8 sample invoices, 4 pass. Across the whole table, <b>27 of 114</b> do.</p>
+<p class="p">The comparison operators are <span class="ic">=</span> <span class="ic">&lt;&gt;</span> <span class="ic">&lt;</span> <span class="ic">&gt;</span> <span class="ic">&lt;=</span> <span class="ic">&gt;=</span>. Text and dates go in single quotes: <span class="ic">VendorState = 'CA'</span>, <span class="ic">InvoiceDate &gt;= '2023-01-01'</span>. Numbers don't.</p>
+<div class="key"><b>Key idea:</b> <span class="ic">WHERE</span> decides <b>which rows</b>, never which columns. It can test any column in the table, even one you don't end up showing.</div>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div class="strip" aria-label="Run order, this step is WHERE"><span class="node">FROM</span><span class="chev" aria-hidden="true">›</span><span class="node on">WHERE</span><span class="chev" aria-hidden="true">›</span><span class="node off">SELECT</span><span class="chev" aria-hidden="true">›</span><span class="node off">ORDER BY</span></div>
+<pre class="sql"><span class="dim"><span class="kw">SELECT</span> *</span>
+<span class="kw">FROM</span> Invoices
+<span class="hl"><span class="kw">WHERE</span> InvoiceTotal &gt; <span class="num">1000</span></span>;</pre>
+<div class="tbl-cap"><span class="lbl">The 8 sample rows · 4 columns shown</span><span class="mono small">full table: 27 of 114 rows</span></div>
+<div class="tbl-wrap">
+<table class="tbl">
+<thead><tr><th class="r">InvoiceID</th><th class="r">VendorID</th><th>InvoiceNumber</th><th class="r">InvoiceTotal</th></tr></thead>
+<tbody>
+<tr class="hit" style="animation-delay: .6s"><td class="r">1</td><td class="r">122</td><td>989319-457</td><td class="r">3813.33</td></tr>
+<tr class="out" style="animation-delay: .8s"><td class="r">2</td><td class="r">123</td><td>263253241</td><td class="r">40.20</td></tr>
+<tr class="out" style="animation-delay: 1s"><td class="r">9</td><td class="r">121</td><td>97/488</td><td class="r">601.95</td></tr>
+<tr class="out" style="animation-delay: 1.2s"><td class="r">15</td><td class="r">48</td><td>P02-88D77S7</td><td class="r">856.92</td></tr>
+<tr class="hit" style="animation-delay: 1.4s"><td class="r">78</td><td class="r">121</td><td>97/522</td><td class="r">1962.13</td></tr>
+<tr class="out" style="animation-delay: 1.6s"><td class="r">89</td><td class="r">72</td><td>39104</td><td class="r">85.31</td></tr>
+<tr class="hit" style="animation-delay: 1.8s"><td class="r">102</td><td class="r">110</td><td>P-0608</td><td class="r">20551.18</td></tr>
+<tr class="hit" style="animation-delay: 2s"><td class="r">112</td><td class="r">110</td><td>0-2436</td><td class="r">10976.06</td></tr>
+</tbody>
+</table>
+</div>
+<p class="small">Highlighted rows pass the test and move on to <span class="ic">SELECT</span>. Faded rows are dropped.</p>
+</div>
+</section>
+</section>
+
+<!-- 06 · AND, OR, NOT -->
+<section class="step" data-chapter="04" data-chapter-label="WHERE" data-title="AND, OR and parentheses" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">AND, OR, NOT — and why parentheses matter</h2>
+<p class="p">Combine conditions with <span class="ic">AND</span> (both must be true) and <span class="ic">OR</span> (either one is enough). <span class="ic">NOT</span> flips a condition: <span class="ic">NOT VendorState = 'CA'</span> keeps everyone outside California.</p>
+<p class="p">The trap: <b>SQL Server does AND before OR</b>, the way math does × before +. Say you want <i>invoices over 1000 from vendor 110 or 121</i>. Written without parentheses, SQL Server reads it as <i>(over 1000 from vendor 110) <b>or</b> (anything from vendor 121)</i>.</p>
+<p class="p">That version returns <b>13 rows</b>, including six small invoices from vendor 121 that you didn't want. Adding parentheses around the <span class="ic">OR</span> gives the intended <b>7 rows</b>.</p>
+<div class="key"><b>Habit:</b> whenever a <span class="ic">WHERE</span> mixes <span class="ic">AND</span> and <span class="ic">OR</span>, add parentheses, even if you think you don't need them. It costs nothing and makes your intent obvious.</div>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div class="lbl">Without parentheses · 13 rows</div>
+<pre class="sql"><span class="kw">SELECT</span> InvoiceID, VendorID, InvoiceTotal
+<span class="kw">FROM</span> Invoices
+<span class="hl"><span class="kw">WHERE</span> InvoiceTotal &gt; <span class="num">1000</span> <span class="kw">AND</span> VendorID = <span class="num">110</span> <span class="kw">OR</span> VendorID = <span class="num">121</span></span>;</pre>
+<div class="lbl" style="color: #F7CF7E">With parentheses · 7 rows</div>
+<pre class="sql"><span class="kw">WHERE</span> InvoiceTotal &gt; <span class="num">1000</span> <span class="kw">AND</span> <span class="hl">(VendorID = <span class="num">110</span> <span class="kw">OR</span> VendorID = <span class="num">121</span>)</span></pre>
+<div class="tbl-cap"><span class="lbl">All 13 rows from the first query</span><span class="mono small">faded = removed by the parentheses</span></div>
+<div class="tbl-wrap">
+<table class="tbl">
+<thead><tr><th class="r">InvoiceID</th><th class="r">VendorID</th><th class="r">InvoiceTotal</th></tr></thead>
+<tbody>
+<tr class="out" style="animation-delay: 1s"><td class="r">9</td><td class="r"><span class="k k1">121</span></td><td class="r">601.95</td></tr>
+<tr class="out" style="animation-delay: 1.15s"><td class="r">32</td><td class="r"><span class="k k1">121</span></td><td class="r">953.10</td></tr>
+<tr class="out" style="animation-delay: 1.3s"><td class="r">36</td><td class="r"><span class="k k1">121</span></td><td class="r">565.15</td></tr>
+<tr><td class="r">39</td><td class="r"><span class="k k2">110</span></td><td class="r">37966.19</td></tr>
+<tr class="out" style="animation-delay: 1.45s"><td class="r">40</td><td class="r"><span class="k k1">121</span></td><td class="r">639.77</td></tr>
+<tr class="out" style="animation-delay: 1.6s"><td class="r">54</td><td class="r"><span class="k k1">121</span></td><td class="r">313.55</td></tr>
+<tr class="out" style="animation-delay: 1.75s"><td class="r">77</td><td class="r"><span class="k k1">121</span></td><td class="r">904.14</td></tr>
+<tr><td class="r">78</td><td class="r"><span class="k k1">121</span></td><td class="r">1962.13</td></tr>
+<tr><td class="r">96</td><td class="r"><span class="k k2">110</span></td><td class="r">26881.40</td></tr>
+<tr><td class="r">102</td><td class="r"><span class="k k2">110</span></td><td class="r">20551.18</td></tr>
+<tr><td class="r">106</td><td class="r"><span class="k k2">110</span></td><td class="r">23517.58</td></tr>
+<tr><td class="r">109</td><td class="r"><span class="k k1">121</span></td><td class="r">1000.46</td></tr>
+<tr><td class="r">112</td><td class="r"><span class="k k2">110</span></td><td class="r">10976.06</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+</section>
+
+<!-- 07 · BETWEEN, IN, LIKE -->
+<section class="step" data-chapter="04" data-chapter-label="WHERE" data-title="BETWEEN, IN and LIKE" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">Shortcuts: BETWEEN, IN and LIKE</h2>
+<p class="p"><span class="ic">BETWEEN</span> tests a range, and <b>includes both ends</b>. It's the same as <span class="ic">&gt;=</span> the first value <span class="ic">AND</span> <span class="ic">&lt;=</span> the second.</p>
+<p class="p"><span class="ic">IN</span> tests against a list. <span class="ic">VendorState IN ('NV', 'AZ', 'TX')</span> is a shorter way to write three <span class="ic">=</span> tests joined by <span class="ic">OR</span>.</p>
+<p class="p"><span class="ic">LIKE</span> matches text against a pattern. <span class="ic">%</span> stands for <b>any number</b> of characters (even none); <span class="ic">_</span> stands for <b>exactly one</b>. So <span class="ic">'N_'</span> means “N plus one more character”.</p>
+<div class="key"><b>Mix and match:</b> each one works with <span class="ic">NOT</span> too: <span class="ic">NOT BETWEEN</span>, <span class="ic">NOT IN</span>, <span class="ic">NOT LIKE</span>. And <span class="ic">LIKE</span> without a <span class="ic">%</span> or <span class="ic">_</span> is just a slower <span class="ic">=</span>.</div>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div class="tbl-cap"><span class="lbl">Range · inclusive</span><span class="mono small">33 invoices</span></div>
+<pre class="sql pop" style="animation-delay: .3s"><span class="kw">SELECT</span> * <span class="kw">FROM</span> Invoices
+<span class="hl"><span class="kw">WHERE</span> InvoiceDate <span class="kw">BETWEEN</span> <span class="str">'2023-01-01'</span> <span class="kw">AND</span> <span class="str">'2023-01-31'</span></span>;</pre>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div class="tbl-cap"><span class="lbl">List</span><span class="mono small">6 vendors · all rows</span></div>
+<pre class="sql pop" style="animation-delay: .6s"><span class="kw">SELECT</span> VendorName, VendorCity, VendorState <span class="kw">FROM</span> Vendors
+<span class="hl"><span class="kw">WHERE</span> VendorState <span class="kw">IN</span> (<span class="str">'NV'</span>, <span class="str">'AZ'</span>, <span class="str">'TX'</span>)</span>;</pre>
+<div class="tbl-wrap pop" style="animation-delay: .8s">
+<table class="tbl">
+<thead><tr><th>VendorName</th><th>VendorCity</th><th>VendorState</th></tr></thead>
+<tbody>
+<tr><td>AT&amp;T</td><td>Phoenix</td><td>AZ</td></tr>
+<tr><td>Wells Fargo Bank</td><td>Phoenix</td><td>AZ</td></tr>
+<tr><td>Computer Library</td><td>Phoenix</td><td>AZ</td></tr>
+<tr><td>Cahners Publishing Company</td><td>The Lake</td><td>NV</td></tr>
+<tr><td>United Parcel Service</td><td>Reno</td><td>NV</td></tr>
+<tr><td>Ingram</td><td>Dallas</td><td>TX</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div class="tbl-cap"><span class="lbl">Pattern</span><span class="mono small">10 vendors</span></div>
+<pre class="sql pop" style="animation-delay: 1.1s"><span class="kw">SELECT</span> * <span class="kw">FROM</span> Vendors
+<span class="hl"><span class="kw">WHERE</span> VendorState <span class="kw">LIKE</span> <span class="str">'N_'</span></span>;</pre>
+<div class="pop" style="animation-delay: 1.3s; display: flex; flex-wrap: wrap; align-items: center; gap: 6px"><span class="small">Matches</span><span class="tok tok-a">NC</span><span class="tok tok-a">NJ</span><span class="tok tok-a">NV</span><span class="tok tok-a">NY</span><span class="small">— the four states in AP that start with N</span></div>
+</div>
+</div>
+</section>
+</section>
+
+<!-- 08 · NULL -->
+<section class="step" data-chapter="04" data-chapter-label="WHERE" data-title="Testing for NULL" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">NULL means “unknown”, so test it with IS NULL</h2>
+<p class="p"><span class="ic">NULL</span> isn't zero and isn't an empty string. It means <b>no value is known</b>. In AP, an invoice that hasn't been paid has no <span class="ic">PaymentDate</span> yet, so that column is <span class="ic">NULL</span>.</p>
+<p class="p">You might try <span class="ic">PaymentDate = NULL</span>. It runs without an error, but it returns <b>0 rows</b>. Comparing anything to “unknown” gives “unknown”, never true, so no row passes.</p>
+<p class="p">The right tests are <span class="ic">IS NULL</span> and <span class="ic">IS NOT NULL</span>. They find the <b>11 unpaid</b> and <b>103 paid</b> invoices, which add up to all 114.</p>
+<div class="key"><b>Key idea:</b> never use <span class="ic">=</span> or <span class="ic">&lt;&gt;</span> with <span class="ic">NULL</span>. Always write <span class="ic">IS NULL</span> or <span class="ic">IS NOT NULL</span>.</div>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div class="strip" aria-label="Run order, this step is WHERE"><span class="node">FROM</span><span class="chev" aria-hidden="true">›</span><span class="node on">WHERE</span><span class="chev" aria-hidden="true">›</span><span class="node off">SELECT</span><span class="chev" aria-hidden="true">›</span><span class="node off">ORDER BY</span></div>
+<pre class="sql"><span class="dim"><span class="kw">SELECT</span> *</span>
+<span class="kw">FROM</span> Invoices
+<span class="hl"><span class="kw">WHERE</span> PaymentDate <span class="kw">IS NULL</span></span>;</pre>
+<div class="tbl-cap"><span class="lbl">The 8 sample rows · 4 columns shown</span><span class="mono small">full table: 11 of 114 rows</span></div>
+<div class="tbl-wrap">
+<table class="tbl">
+<thead><tr><th class="r">InvoiceID</th><th>InvoiceNumber</th><th class="r">InvoiceTotal</th><th>PaymentDate</th></tr></thead>
+<tbody>
+<tr class="out" style="animation-delay: .6s"><td class="r">1</td><td>989319-457</td><td class="r">3813.33</td><td>2022-11-07</td></tr>
+<tr class="out" style="animation-delay: .75s"><td class="r">2</td><td>263253241</td><td class="r">40.20</td><td>2022-11-14</td></tr>
+<tr class="out" style="animation-delay: .9s"><td class="r">9</td><td>97/488</td><td class="r">601.95</td><td>2022-11-21</td></tr>
+<tr class="out" style="animation-delay: 1.05s"><td class="r">15</td><td>P02-88D77S7</td><td class="r">856.92</td><td>2022-11-30</td></tr>
+<tr class="out" style="animation-delay: 1.2s"><td class="r">78</td><td>97/522</td><td class="r">1962.13</td><td>2023-01-30</td></tr>
+<tr class="hit" style="animation-delay: 1.35s"><td class="r">89</td><td>39104</td><td class="r">85.31</td><td class="null">NULL</td></tr>
+<tr class="hit" style="animation-delay: 1.5s"><td class="r">102</td><td>P-0608</td><td class="r">20551.18</td><td class="null">NULL</td></tr>
+<tr class="hit" style="animation-delay: 1.65s"><td class="r">112</td><td>0-2436</td><td class="r">10976.06</td><td class="null">NULL</td></tr>
+</tbody>
+</table>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: 10px">
+<div class="card pop" style="animation-delay: 1.9s"><span class="mono" style="font-size: 13px">PaymentDate <b style="color: #F7CF7E">IS NULL</b></span><span class="h3">11 rows</span></div>
+<div class="card pop" style="animation-delay: 2.05s; border-color: #5C2A36"><span class="mono" style="font-size: 13px">PaymentDate <b style="color: #F5A8B8">= NULL</b></span><span class="h3" style="color: #F5A8B8">0 rows</span></div>
+<div class="card pop" style="animation-delay: 2.2s"><span class="mono" style="font-size: 13px">PaymentDate <b style="color: #F7CF7E">IS NOT NULL</b></span><span class="h3">103 rows</span></div>
+</div>
+</div>
+</section>
+</section>
+
+<!-- 09 · Choosing columns -->
+<section class="step" data-chapter="05" data-chapter-label="SELECT" data-title="Choosing columns" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">SELECT: choose the columns</h2>
+<p class="p">Only now, with the rows already filtered, does SQL Server look at the <span class="ic">SELECT</span> list. It decides <b>which columns</b> end up in the result, and in what order.</p>
+<p class="p">List the columns you want, separated by commas. Columns come back in the order you list them, not the order they sit in the table. Everything you leave out simply disappears from the result. The table itself is untouched.</p>
+<div class="key"><b>Rows vs columns:</b> <span class="ic">WHERE</span> trims the grid from top to bottom (rows). <span class="ic">SELECT</span> trims it from side to side (columns). They don't overlap.</div>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div class="strip" aria-label="Run order, this step is SELECT"><span class="node">FROM</span><span class="chev" aria-hidden="true">›</span><span class="node">WHERE</span><span class="chev" aria-hidden="true">›</span><span class="node on">SELECT</span><span class="chev" aria-hidden="true">›</span><span class="node off">ORDER BY</span></div>
+<pre class="sql"><span class="hl"><span class="kw">SELECT</span> InvoiceNumber, InvoiceDate, InvoiceTotal</span>
+<span class="kw">FROM</span> Invoices;</pre>
+<div class="tbl-cap"><span class="lbl">8 of 114 rows · 6 of 10 columns shown</span><span class="mono small">faded = not in the SELECT list</span></div>
+<div class="tbl-wrap">
+<table class="tbl">
+<thead><tr><th class="r out" style="animation-delay: .6s">InvoiceID</th><th class="r out" style="animation-delay: .6s">VendorID</th><th class="hit" style="animation-delay: 1s">InvoiceNumber</th><th class="hit" style="animation-delay: 1s">InvoiceDate</th><th class="r hit" style="animation-delay: 1s">InvoiceTotal</th><th class="out" style="animation-delay: .6s">PaymentDate</th></tr></thead>
+<tbody>
+<tr><td class="r out" style="animation-delay: .6s">1</td><td class="r out" style="animation-delay: .6s">122</td><td>989319-457</td><td>2022-10-08</td><td class="r">3813.33</td><td class="out" style="animation-delay: .6s">2022-11-07</td></tr>
+<tr><td class="r out" style="animation-delay: .6s">2</td><td class="r out" style="animation-delay: .6s">123</td><td>263253241</td><td>2022-10-10</td><td class="r">40.20</td><td class="out" style="animation-delay: .6s">2022-11-14</td></tr>
+<tr><td class="r out" style="animation-delay: .6s">9</td><td class="r out" style="animation-delay: .6s">121</td><td>97/488</td><td>2022-10-24</td><td class="r">601.95</td><td class="out" style="animation-delay: .6s">2022-11-21</td></tr>
+<tr><td class="r out" style="animation-delay: .6s">15</td><td class="r out" style="animation-delay: .6s">48</td><td>P02-88D77S7</td><td>2022-11-03</td><td class="r">856.92</td><td class="out" style="animation-delay: .6s">2022-11-30</td></tr>
+<tr><td class="r out" style="animation-delay: .6s">78</td><td class="r out" style="animation-delay: .6s">121</td><td>97/522</td><td>2022-12-28</td><td class="r">1962.13</td><td class="out" style="animation-delay: .6s">2023-01-30</td></tr>
+<tr><td class="r out" style="animation-delay: .6s">89</td><td class="r out" style="animation-delay: .6s">72</td><td>39104</td><td>2023-01-10</td><td class="r">85.31</td><td class="null out" style="animation-delay: .6s">NULL</td></tr>
+<tr><td class="r out" style="animation-delay: .6s">102</td><td class="r out" style="animation-delay: .6s">110</td><td>P-0608</td><td>2023-01-23</td><td class="r">20551.18</td><td class="null out" style="animation-delay: .6s">NULL</td></tr>
+<tr><td class="r out" style="animation-delay: .6s">112</td><td class="r out" style="animation-delay: .6s">110</td><td>0-2436</td><td>2023-01-31</td><td class="r">10976.06</td><td class="null out" style="animation-delay: .6s">NULL</td></tr>
+</tbody>
+</table>
+</div>
+<p class="small">No <span class="ic">WHERE</span> this time, so all 114 rows come back, each with just three columns.</p>
+</div>
+</section>
+</section>
+
+<!-- 10 · Calculated columns -->
+<section class="step" data-chapter="05" data-chapter-label="SELECT" data-title="Calculated columns &amp; aliases" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">Calculated columns and aliases</h2>
+<p class="p">A <span class="ic">SELECT</span> list can hold more than column names. It can hold <b>expressions</b>, worked out fresh for every row. Here, what's still owed on an invoice is its total minus what's been paid and credited.</p>
+<p class="p">The math operators are <span class="ic">+</span> <span class="ic">-</span> <span class="ic">*</span> <span class="ic">/</span> and <span class="ic">%</span> (remainder), with <span class="ic">*</span> and <span class="ic">/</span> before <span class="ic">+</span> and <span class="ic">-</span>, as usual. Use parentheses to change that.</p>
+<p class="p">A calculated column has no name of its own; SSMS shows <span class="ic">(No column name)</span>. <span class="ic">AS BalanceDue</span> gives it one. That name is an <b>alias</b>: it only exists in the result.</p>
+<div class="key"><b>Key idea:</b> the new column is <b>calculated, not stored</b>. Nothing in the Invoices table changes. Run the query tomorrow after a payment, and the balance is recalculated.</div>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div class="strip" aria-label="Run order, this step is SELECT"><span class="node">FROM</span><span class="chev" aria-hidden="true">›</span><span class="node">WHERE</span><span class="chev" aria-hidden="true">›</span><span class="node on">SELECT</span><span class="chev" aria-hidden="true">›</span><span class="node off">ORDER BY</span></div>
+<pre class="sql"><span class="kw">SELECT</span> InvoiceNumber, InvoiceTotal, PaymentTotal, CreditTotal,
+       <span class="hl">InvoiceTotal - PaymentTotal - CreditTotal <span class="kw">AS</span> BalanceDue</span>
+<span class="kw">FROM</span> Invoices;</pre>
+<div class="tbl-cap"><span class="lbl">The 8 sample rows</span></div>
+<div class="tbl-wrap">
+<table class="tbl">
+<thead><tr><th>InvoiceNumber</th><th class="r">InvoiceTotal</th><th class="r">PaymentTotal</th><th class="r">CreditTotal</th><th class="r hit" style="animation-delay: .5s; color: #F7CF7E">BalanceDue</th></tr></thead>
+<tbody>
+<tr><td>989319-457</td><td class="r">3813.33</td><td class="r">3813.33</td><td class="r">0.00</td><td class="r hit" style="animation-delay: .7s">0.00</td></tr>
+<tr><td>263253241</td><td class="r">40.20</td><td class="r">40.20</td><td class="r">0.00</td><td class="r hit" style="animation-delay: .8s">0.00</td></tr>
+<tr><td>97/488</td><td class="r">601.95</td><td class="r">601.95</td><td class="r">0.00</td><td class="r hit" style="animation-delay: .9s">0.00</td></tr>
+<tr><td>P02-88D77S7</td><td class="r">856.92</td><td class="r">856.92</td><td class="r">0.00</td><td class="r hit" style="animation-delay: 1s">0.00</td></tr>
+<tr><td>97/522</td><td class="r">1962.13</td><td class="r">1762.13</td><td class="r">200.00</td><td class="r hit" style="animation-delay: 1.1s">0.00</td></tr>
+<tr><td>39104</td><td class="r">85.31</td><td class="r">0.00</td><td class="r">0.00</td><td class="r hit" style="animation-delay: 1.2s"><b style="color: #F7CF7E">85.31</b></td></tr>
+<tr><td>P-0608</td><td class="r">20551.18</td><td class="r">0.00</td><td class="r">1200.00</td><td class="r hit" style="animation-delay: 1.3s"><b style="color: #F7CF7E">19351.18</b></td></tr>
+<tr><td>0-2436</td><td class="r">10976.06</td><td class="r">0.00</td><td class="r">0.00</td><td class="r hit" style="animation-delay: 1.4s"><b style="color: #F7CF7E">10976.06</b></td></tr>
+</tbody>
+</table>
+</div>
+<p class="small">Invoice 97/522 shows why credits matter: 1962.13 − 1762.13 − 200.00 = 0.00, so it's fully settled.</p>
+</div>
+</section>
+</section>
+
+<!-- 11 · Joining text -->
+<section class="step" data-chapter="05" data-chapter-label="SELECT" data-title="Joining text together" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">Gluing text together</h2>
+<p class="p">In SQL Server, <span class="ic">+</span> between two pieces of text <b>joins them</b> into one string (this is called <b>concatenation</b>). Put a literal string in single quotes between them, like <span class="ic">' '</span>, to add a space or other separator.</p>
+<p class="p">Vendors stores a contact's first and last names in separate columns. One expression and an alias turn them into a single readable <span class="ic">ContactName</span> column.</p>
+<div class="key"><b>Watch out:</b> if either side of a <span class="ic">+</span> is <span class="ic">NULL</span>, the whole result is <span class="ic">NULL</span>. Every AP vendor has both names, so it's not a problem here. When columns might be empty, <span class="ic">CONCAT(VendorContactFName, ' ', VendorContactLName)</span> treats <span class="ic">NULL</span> as empty text instead.</div>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div class="strip" aria-label="Run order, this step is SELECT"><span class="node">FROM</span><span class="chev" aria-hidden="true">›</span><span class="node">WHERE</span><span class="chev" aria-hidden="true">›</span><span class="node on">SELECT</span><span class="chev" aria-hidden="true">›</span><span class="node off">ORDER BY</span></div>
+<pre class="sql"><span class="kw">SELECT</span> VendorName,
+       <span class="hl">VendorContactFName + <span class="str">' '</span> + VendorContactLName <span class="kw">AS</span> ContactName</span>
+<span class="kw">FROM</span> Vendors;</pre>
+<div class="tbl-cap"><span class="lbl">First 6 of 122 rows</span></div>
+<div class="tbl-wrap">
+<table class="tbl">
+<thead><tr><th>VendorName</th><th class="hit" style="animation-delay: .5s; color: #F7CF7E">ContactName</th></tr></thead>
+<tbody>
+<tr><td>US Postal Service</td><td class="hit" style="animation-delay: .7s">Francesco Alberto</td></tr>
+<tr><td>National Information Data Ctr</td><td class="hit" style="animation-delay: .8s">Ania Irvin</td></tr>
+<tr><td>Register of Copyrights</td><td class="hit" style="animation-delay: .9s">Lukas Liana</td></tr>
+<tr><td>Jobtrak</td><td class="hit" style="animation-delay: 1s">Kenzie Quinn</td></tr>
+<tr><td>Newbrige Book Clubs</td><td class="hit" style="animation-delay: 1.1s">Michelle Marks</td></tr>
+<tr><td>California Chamber Of Commerce</td><td class="hit" style="animation-delay: 1.2s">Anton Mauro</td></tr>
+</tbody>
+</table>
+</div>
+<div class="pop" style="animation-delay: 1.5s; display: flex; flex-wrap: wrap; align-items: center; gap: 6px"><span class="tok tok-b">Francesco</span><span class="chev" aria-hidden="true">+</span><span class="tok tok-a">' '</span><span class="chev" aria-hidden="true">+</span><span class="tok tok-b">Alberto</span><span class="chev" aria-hidden="true">=</span><span class="tok tok-b">Francesco Alberto</span></div>
+</div>
+</section>
+</section>
+
+<!-- 12 · DISTINCT -->
+<section class="step" data-chapter="05" data-chapter-label="SELECT" data-title="DISTINCT removes duplicates" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">DISTINCT: each answer once</h2>
+<p class="p">Ask for every vendor's state and you get <b>122 rows</b>, one per vendor, with <span class="ic">CA</span> repeated 75 times. Usually the real question is <i>which states do we have vendors in?</i></p>
+<p class="p">Put <span class="ic">DISTINCT</span> right after <span class="ic">SELECT</span> and duplicate rows are collapsed into one. The answer is <b>22 states</b>.</p>
+<p class="p"><span class="ic">DISTINCT</span> looks at the <b>whole row</b>, not just the first column. <span class="ic">SELECT DISTINCT VendorCity, VendorState</span> returns 53 rows. The 41 vendors in Fresno, CA collapse into one row, but Washington DC, Washington IA and Washington NJ stay as three separate rows.</p>
+<div class="key"><b>Order isn't promised:</b> <span class="ic">DISTINCT</span> results often come back sorted, but that's a side effect. If you need them in order, add <span class="ic">ORDER BY</span>.</div>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div class="strip" aria-label="Run order, this step is SELECT"><span class="node">FROM</span><span class="chev" aria-hidden="true">›</span><span class="node">WHERE</span><span class="chev" aria-hidden="true">›</span><span class="node on">SELECT</span><span class="chev" aria-hidden="true">›</span><span class="node off">ORDER BY</span></div>
+<pre class="sql"><span class="kw">SELECT</span> <span class="hl"><span class="kw">DISTINCT</span></span> VendorState
+<span class="kw">FROM</span> Vendors;</pre>
+<div class="tbl-cap"><span class="lbl">First 10 vendors · faded = duplicate</span></div>
+<div class="tbl-wrap">
+<table class="tbl">
+<thead><tr><th class="r">VendorID</th><th>VendorState</th></tr></thead>
+<tbody>
+<tr class="hit" style="animation-delay: .5s"><td class="r">1</td><td>WI</td></tr>
+<tr class="hit" style="animation-delay: .65s"><td class="r">2</td><td>DC</td></tr>
+<tr class="out" style="animation-delay: .8s"><td class="r">3</td><td>DC</td></tr>
+<tr class="hit" style="animation-delay: .95s"><td class="r">4</td><td>CA</td></tr>
+<tr class="hit" style="animation-delay: 1.1s"><td class="r">5</td><td>NJ</td></tr>
+<tr class="out" style="animation-delay: 1.25s"><td class="r">6</td><td>CA</td></tr>
+<tr class="out" style="animation-delay: 1.4s"><td class="r">7</td><td>CA</td></tr>
+<tr class="out" style="animation-delay: 1.55s"><td class="r">8</td><td>CA</td></tr>
+<tr class="out" style="animation-delay: 1.7s"><td class="r">9</td><td>CA</td></tr>
+<tr class="out" style="animation-delay: 1.85s"><td class="r">10</td><td>CA</td></tr>
+</tbody>
+</table>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: 10px">
+<div class="card pop" style="animation-delay: 2.1s"><span class="lbl">Without DISTINCT</span><span class="h3">122 rows</span></div>
+<div class="card pop" style="animation-delay: 2.25s; border-color: #4A3B1C"><span class="lbl">DISTINCT VendorState</span><span class="h3" style="color: #F7CF7E">22 rows</span></div>
+<div class="card pop" style="animation-delay: 2.4s"><span class="lbl">DISTINCT City, State</span><span class="h3">53 rows</span></div>
+</div>
+</div>
+</section>
+</section>
+
+<!-- 13 · ORDER BY -->
+<section class="step" data-chapter="06" data-chapter-label="ORDER BY" data-title="Sorting the result" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">ORDER BY: sort what's left</h2>
+<p class="p"><span class="ic">ORDER BY</span> runs <b>last</b>. By now the rows are filtered and the columns are built, so all that's left is to put them in order.</p>
+<p class="p">Sorting is ascending (<span class="ic">ASC</span>: A→Z, small→large, old→new) unless you add <span class="ic">DESC</span>. Here the 11 unpaid invoices come back biggest first, so the most urgent bills are at the top.</p>
+<p class="p">List more than one column to break ties: <span class="ic">ORDER BY VendorState, VendorName</span> sorts by state, then by name <b>within</b> each state. Each column gets its own <span class="ic">ASC</span> or <span class="ic">DESC</span>.</p>
+<div class="key"><b>Key idea:</b> without <span class="ic">ORDER BY</span>, SQL Server makes <b>no promise</b> about row order. If the order matters, say so.</div>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div class="strip" aria-label="Run order, this step is ORDER BY"><span class="node">FROM</span><span class="chev" aria-hidden="true">›</span><span class="node">WHERE</span><span class="chev" aria-hidden="true">›</span><span class="node">SELECT</span><span class="chev" aria-hidden="true">›</span><span class="node on">ORDER BY</span></div>
+<pre class="sql"><span class="kw">SELECT</span> InvoiceNumber, InvoiceDate, InvoiceTotal
+<span class="kw">FROM</span> Invoices
+<span class="kw">WHERE</span> PaymentDate <span class="kw">IS NULL</span>
+<span class="hl"><span class="kw">ORDER BY</span> InvoiceTotal <span class="kw">DESC</span></span>;</pre>
+<div class="tbl-cap"><span class="lbl">All 11 rows</span><span class="mono small">largest first ↓</span></div>
+<div class="tbl-wrap">
+<table class="tbl">
+<thead><tr><th>InvoiceNumber</th><th>InvoiceDate</th><th class="r" style="color: #F7CF7E">InvoiceTotal ↓</th></tr></thead>
+<tbody>
+<tr class="hit" style="animation-delay: .5s"><td>P-0608</td><td>2023-01-23</td><td class="r">20551.18</td></tr>
+<tr class="hit" style="animation-delay: .6s"><td>0-2436</td><td>2023-01-31</td><td class="r">10976.06</td></tr>
+<tr class="hit" style="animation-delay: .7s"><td>31361833</td><td>2023-01-21</td><td class="r">579.42</td></tr>
+<tr class="hit" style="animation-delay: .8s"><td>9982771</td><td>2023-01-24</td><td class="r">503.20</td></tr>
+<tr class="hit" style="animation-delay: .9s"><td>547480102</td><td>2023-02-01</td><td class="r">224.00</td></tr>
+<tr class="hit" style="animation-delay: 1s"><td>134116</td><td>2023-01-28</td><td class="r">90.36</td></tr>
+<tr class="hit" style="animation-delay: 1.1s"><td>39104</td><td>2023-01-10</td><td class="r">85.31</td></tr>
+<tr class="hit" style="animation-delay: 1.2s"><td>263253270</td><td>2023-01-22</td><td class="r">67.92</td></tr>
+<tr class="hit" style="animation-delay: 1.3s"><td>263253268</td><td>2023-01-21</td><td class="r">59.97</td></tr>
+<tr class="hit" style="animation-delay: 1.4s"><td>963253264</td><td>2023-01-18</td><td class="r">52.25</td></tr>
+<tr class="hit" style="animation-delay: 1.5s"><td>263253273</td><td>2023-01-22</td><td class="r">30.75</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+</section>
+
+<!-- 14 · Aliases and run order -->
+<section class="step" data-chapter="06" data-chapter-label="ORDER BY" data-title="Why an alias works in ORDER BY" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">Why ORDER BY can use an alias, but WHERE can't</h2>
+<p class="p">Here's the run order paying off. The alias <span class="ic">BalanceDue</span> is created by <span class="ic">SELECT</span>, which is step 3.</p>
+<p class="p"><span class="ic">ORDER BY</span> is step 4, so the alias already exists and you can sort by it. <span class="ic">WHERE</span> is step 2: it runs before <span class="ic">SELECT</span> has named anything, so SQL Server has never heard of <span class="ic">BalanceDue</span> and stops with an error.</p>
+<p class="p">The fix is to repeat the expression in <span class="ic">WHERE</span>. The working query returns the same <b>11 invoices</b> as the unpaid list: in AP, every invoice that still has a balance is one with no payment date.</p>
+<div class="key"><b>Rule of thumb:</b> a clause can only use names created by clauses that ran <b>before</b> it. When an error says <i>Invalid column name</i> and you're sure the name exists, check the run order.</div>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<div class="strip" aria-label="Run order"><span class="node">1 · FROM</span><span class="chev" aria-hidden="true">›</span><span class="node" style="border-color: #5C2A36; color: #F5A8B8">2 · WHERE</span><span class="chev" aria-hidden="true">›</span><span class="node on">3 · SELECT <span style="opacity: .7">names BalanceDue</span></span><span class="chev" aria-hidden="true">›</span><span class="node" style="border-color: #3E6B48; color: #A8E6A1">4 · ORDER BY</span></div>
+<div class="lbl" style="color: #F5A8B8">Fails</div>
+<pre class="sql pop" style="animation-delay: .3s"><span class="kw">SELECT</span> InvoiceNumber,
+       InvoiceTotal - PaymentTotal - CreditTotal <span class="kw">AS</span> BalanceDue
+<span class="kw">FROM</span> Invoices
+<span class="hl"><span class="kw">WHERE</span> BalanceDue &gt; <span class="num">0</span></span>;</pre>
+<div class="err pop" style="animation-delay: .6s"><b>Msg 207, Level 16, State 1, Line 1</b><br>Invalid column name 'BalanceDue'.</div>
+<div class="lbl" style="color: #A8E6A1">Works · 11 rows</div>
+<pre class="sql pop" style="animation-delay: 1s"><span class="kw">SELECT</span> InvoiceNumber,
+       InvoiceTotal - PaymentTotal - CreditTotal <span class="kw">AS</span> BalanceDue
+<span class="kw">FROM</span> Invoices
+<span class="kw">WHERE</span> <span class="hl">InvoiceTotal - PaymentTotal - CreditTotal</span> &gt; <span class="num">0</span>
+<span class="kw">ORDER BY</span> <span class="hl">BalanceDue</span> <span class="kw">DESC</span>;</pre>
+<div class="tbl-wrap pop" style="animation-delay: 1.3s">
+<table class="tbl">
+<thead><tr><th>InvoiceNumber</th><th class="r">BalanceDue ↓</th></tr></thead>
+<tbody>
+<tr><td>P-0608</td><td class="r">19351.18</td></tr>
+<tr><td>0-2436</td><td class="r">10976.06</td></tr>
+<tr><td>31361833</td><td class="r">579.42</td></tr>
+<tr><td class="null" colspan="2">…8 more rows</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+</section>
+
+<!-- 15 · TOP and OFFSET-FETCH -->
+<section class="step" data-chapter="06" data-chapter-label="ORDER BY" data-title="TOP and OFFSET-FETCH" hidden>
+<section class="split">
+<div class="col rise">
+<h2 class="h2">Just the first few: TOP and OFFSET-FETCH</h2>
+<p class="p"><span class="ic">TOP 5</span>, written right after <span class="ic">SELECT</span>, keeps only the first 5 rows of the result. Paired with <span class="ic">ORDER BY</span>, that answers questions like <i>what are our five biggest invoices?</i></p>
+<p class="p">For the <b>next</b> five, use <span class="ic">OFFSET</span> and <span class="ic">FETCH</span> at the end of <span class="ic">ORDER BY</span>: skip 5 rows, then return 5. This is how apps show results one page at a time.</p>
+<p class="p">Vendor 110 owns four of the top five. That's the kind of thing a sorted, trimmed list makes obvious.</p>
+<div class="key"><b>Always sort first:</b> <span class="ic">TOP</span> without <span class="ic">ORDER BY</span> returns <i>some</i> 5 rows, not the biggest 5. <span class="ic">OFFSET-FETCH</span> won't run without <span class="ic">ORDER BY</span> at all.</div>
+</div>
+<div class="panel rise" style="animation-delay: .15s">
+<pre class="sql"><span class="kw">SELECT</span> <span class="hl"><span class="kw">TOP</span> <span class="num">5</span></span> InvoiceNumber, VendorID, InvoiceTotal
+<span class="kw">FROM</span> Invoices
+<span class="kw">ORDER BY</span> InvoiceTotal <span class="kw">DESC</span>;</pre>
+<div class="tbl-cap"><span class="lbl">Rows 1–5 of 114</span></div>
+<div class="tbl-wrap">
+<table class="tbl">
+<thead><tr><th>InvoiceNumber</th><th class="r">VendorID</th><th class="r">InvoiceTotal ↓</th></tr></thead>
+<tbody>
+<tr class="hit" style="animation-delay: .4s"><td>0-2058</td><td class="r"><span class="k k2">110</span></td><td class="r">37966.19</td></tr>
+<tr class="hit" style="animation-delay: .5s"><td>P-0259</td><td class="r"><span class="k k2">110</span></td><td class="r">26881.40</td></tr>
+<tr class="hit" style="animation-delay: .6s"><td>0-2060</td><td class="r"><span class="k k2">110</span></td><td class="r">23517.58</td></tr>
+<tr class="hit" style="animation-delay: .7s"><td>40318</td><td class="r">72</td><td class="r">21842.00</td></tr>
+<tr class="hit" style="animation-delay: .8s"><td>P-0608</td><td class="r"><span class="k k2">110</span></td><td class="r">20551.18</td></tr>
+</tbody>
+</table>
+</div>
+<pre class="sql"><span class="kw">SELECT</span> InvoiceNumber, VendorID, InvoiceTotal
+<span class="kw">FROM</span> Invoices
+<span class="kw">ORDER BY</span> InvoiceTotal <span class="kw">DESC</span>
+<span class="hl"><span class="kw">OFFSET</span> <span class="num">5</span> <span class="kw">ROWS FETCH NEXT</span> <span class="num">5</span> <span class="kw">ROWS ONLY</span></span>;</pre>
+<div class="tbl-cap"><span class="lbl">Rows 6–10 of 114</span></div>
+<div class="tbl-wrap">
+<table class="tbl">
+<thead><tr><th>InvoiceNumber</th><th class="r">VendorID</th><th class="r">InvoiceTotal ↓</th></tr></thead>
+<tbody>
+<tr class="hitb" style="animation-delay: 1.2s"><td>0-2436</td><td class="r"><span class="k k2">110</span></td><td class="r">10976.06</td></tr>
+<tr class="hitb" style="animation-delay: 1.3s"><td>P02-3772</td><td class="r">104</td><td class="r">7125.34</td></tr>
+<tr class="hitb" style="animation-delay: 1.4s"><td>509786</td><td class="r">99</td><td class="r">6940.25</td></tr>
+<tr class="hitb" style="animation-delay: 1.5s"><td>10843</td><td class="r">119</td><td class="r">4901.26</td></tr>
+<tr class="hitb" style="animation-delay: 1.6s"><td>989319-457</td><td class="r">122</td><td class="r">3813.33</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+</section>
+
+<!-- 16 · Cheat sheet -->
+<section class="step" data-chapter="07" data-chapter-label="Cheat sheet" data-title="Cheat sheet" hidden>
+<section style="display: flex; flex-direction: column; gap: 28px">
+<div class="col rise" style="max-width: 820px">
+<h2 class="h2">Cheat sheet</h2>
+<p class="p">Everything on one screen. If you remember one thing: <b>write SELECT · FROM · WHERE · ORDER BY, but SQL Server runs FROM → WHERE → SELECT → ORDER BY.</b></p>
+</div>
+<pre class="sql rise" style="animation-delay: .1s"><span class="kw">SELECT</span> [<span class="kw">DISTINCT</span>] [<span class="kw">TOP</span> n] column, expression <span class="kw">AS</span> alias, …   <span class="cm">-- 3 · which columns</span>
+<span class="kw">FROM</span> table                                               <span class="cm">-- 1 · which table</span>
+[<span class="kw">WHERE</span> condition]                                         <span class="cm">-- 2 · which rows</span>
+[<span class="kw">ORDER BY</span> column [<span class="kw">ASC</span>|<span class="kw">DESC</span>], …                           <span class="cm">-- 4 · what order</span>
+   [<span class="kw">OFFSET</span> n <span class="kw">ROWS FETCH NEXT</span> n <span class="kw">ROWS ONLY</span>]];</pre>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); gap: 16px">
+<div class="card rise" style="animation-delay: .2s; padding: 22px; gap: 12px"><span class="mono" style="font-size: 13px; color: #F2B544">1 · FROM</span><ul class="list" style="gap: 8px"><li class="li" style="font-size: 15px"><span class="dot"></span><span>Names the table; every row starts in play</span></li><li class="li" style="font-size: 15px"><span class="dot"></span><span><span class="ic">*</span> = every column; good for exploring</span></li><li class="li" style="font-size: 15px"><span class="dot"></span><span>No promised row order</span></li></ul></div>
+<div class="card rise" style="animation-delay: .3s; padding: 22px; gap: 12px"><span class="mono" style="font-size: 13px; color: #F2B544">2 · WHERE</span><ul class="list" style="gap: 8px"><li class="li" style="font-size: 15px"><span class="dot"></span><span>Keeps rows where the condition is true</span></li><li class="li" style="font-size: 15px"><span class="dot"></span><span>AND before OR — use parentheses</span></li><li class="li" style="font-size: 15px"><span class="dot"></span><span>BETWEEN (inclusive), IN, LIKE with % and _</span></li><li class="li" style="font-size: 15px"><span class="dot"></span><span>IS NULL, never = NULL</span></li></ul></div>
+<div class="card rise" style="animation-delay: .4s; padding: 22px; gap: 12px"><span class="mono" style="font-size: 13px; color: #F2B544">3 · SELECT</span><ul class="list" style="gap: 8px"><li class="li" style="font-size: 15px"><span class="dot"></span><span>Picks and orders the columns</span></li><li class="li" style="font-size: 15px"><span class="dot"></span><span>Calculates new ones; name them with AS</span></li><li class="li" style="font-size: 15px"><span class="dot"></span><span><span class="ic">+</span> joins text; NULL + text = NULL</span></li><li class="li" style="font-size: 15px"><span class="dot"></span><span>DISTINCT collapses duplicate rows</span></li></ul></div>
+<div class="card rise" style="animation-delay: .5s; padding: 22px; gap: 12px"><span class="mono" style="font-size: 13px; color: #F2B544">4 · ORDER BY</span><ul class="list" style="gap: 8px"><li class="li" style="font-size: 15px"><span class="dot"></span><span>ASC by default; DESC for largest first</span></li><li class="li" style="font-size: 15px"><span class="dot"></span><span>Several columns break ties</span></li><li class="li" style="font-size: 15px"><span class="dot"></span><span>Can use SELECT's aliases (WHERE can't)</span></li><li class="li" style="font-size: 15px"><span class="dot"></span><span>TOP and OFFSET-FETCH need it to make sense</span></li></ul></div>
+</div>
+<p class="small rise" style="animation-delay: .6s">Next: combine tables with the <a href="../sql-joins/">joins explainer</a>, or count and total rows with <a href="../sql-summary-queries/">summary queries</a>.</p>
+</section>
+</section>
+
+
+</main>
+
+<footer class="controls">
+<button type="button" class="navbtn" data-prev aria-label="Previous step"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg><span>Back</span></button>
+<div class="segments" role="group" aria-label="Steps" data-segments></div>
+<span class="hint"><kbd>←</kbd> <kbd>→</kbd> to step</span>
+<button type="button" class="navbtn" data-replay aria-label="Replay this step's animation"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path></svg><span>Replay</span></button>
+<button type="button" class="navbtn primary" data-next><span data-next-label>Next</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg></button>
+</footer>
+
+</div>
+<script src="../assets/explainer.js"></script>
+</body>
+</html>

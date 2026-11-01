@@ -103,6 +103,51 @@ button:focus-visible{outline:2px solid #5CCFE6;outline-offset:2px}
 th,td{text-align:left;vertical-align:top;padding:14px 16px;border-bottom:1px solid #2A2F37;font-size:15px;line-height:1.5;color:#C3C8CF}
 th{font:500 12px/1.4 'IBM Plex Mono',ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;color:#9AA0A9}
 td b{color:#F4F5F6}
+/* ---------- SQL explainers ---------- */
+/* Query text: wrap keywords in .kw, strings in .str, numbers in .num, comments in .cm.
+   .hl marks the clause a step is about; .dim fades clauses it isn't. */
+.sql{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:15px;line-height:1.75;background:#0B0D10;border:1px solid #2A2F37;border-radius:10px;padding:16px 20px;margin:0;white-space:pre;overflow-x:auto;color:#D6DAE0}
+.sql .kw{color:#C9A8F5;font-weight:500}
+.sql .str{color:#A8E6A1}
+.sql .num{color:#F7CF7E}
+.sql .cm{color:#6B727C}
+.sql .hl{background:rgba(242,181,68,.16);box-shadow:0 0 0 1px rgba(242,181,68,.5);border-radius:4px}
+.sql .dim{opacity:.35}
+/* Processing-order strip: one .node per clause; the clause a step is about is .on, the rest .off. */
+.strip{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.strip .node{min-height:34px;padding:4px 12px;font:500 13px/1.2 'IBM Plex Mono',ui-monospace,monospace}
+.strip .on{border-color:#F2B544;background:#2A2312;color:#FBE3B0}
+.strip .off{opacity:.4}
+/* SQL Server error output: <div class="err"><b>Msg …, Line 1</b><br>message</div> */
+.err{font:14px/1.6 'IBM Plex Mono',ui-monospace,monospace;padding:12px 16px;border-radius:10px;background:#24141A;border:1px solid #5C2A36;color:#F5A8B8}
+.err b{color:#FFD6DC;font-weight:500}
+/* Result grids: wrap a <table class="tbl"> in .tbl-wrap so wide results scroll inside the panel. */
+.tbl-wrap{overflow-x:auto;border:1px solid #2A2F37;border-radius:10px;background:#0B0D10;max-width:100%}
+.tbl{border-collapse:collapse;width:100%;font-family:'IBM Plex Mono',ui-monospace,monospace}
+.tbl th,.tbl td{padding:7px 12px;border-bottom:1px solid #1F2329;white-space:nowrap;font-size:13px;line-height:1.4}
+.tbl td{color:#D6DAE0}
+.tbl th{font-size:11px;background:#14171B;position:sticky;top:0}
+.tbl tr:last-child td{border-bottom:0}
+.tbl .r{text-align:right}
+.tbl .null{color:#6B727C;font-style:italic}
+.tbl .ca{color:#8FE0F0}                 /* value from the left / first table */
+.tbl .cb{color:#F7CF7E}                 /* value from the right / second table */
+.tbl-cap{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+@keyframes out{to{opacity:.22}}
+.tbl .out{animation:out .5s ease both}  /* a row or cell the clause removes; stagger with animation-delay */
+@keyframes hit{0%{background:transparent}35%{background:rgba(242,181,68,.28)}100%{background:rgba(242,181,68,.12)}}
+.tbl .hit{animation:hit .9s ease both}  /* a row or cell the clause keeps or produces */
+@keyframes hitb{0%{background:transparent}35%{background:rgba(92,207,230,.26)}100%{background:rgba(92,207,230,.1)}}
+.tbl .hitb{animation:hitb .9s ease both}
+/* Key chips: give matching key values the same colour so students can see which rows pair up. */
+.k{display:inline-block;min-width:2.2em;text-align:center;padding:1px 6px;border-radius:5px;border:1px solid}
+.k1{color:#8FE0F0;background:rgba(92,207,230,.12);border-color:rgba(92,207,230,.45)}
+.k2{color:#F7CF7E;background:rgba(242,181,68,.12);border-color:rgba(242,181,68,.45)}
+.k3{color:#C9A8F5;background:rgba(201,168,245,.12);border-color:rgba(201,168,245,.45)}
+.k4{color:#A8E6A1;background:rgba(168,230,161,.12);border-color:rgba(168,230,161,.45)}
+.k5{color:#F5A8B8;background:rgba(245,168,184,.12);border-color:rgba(245,168,184,.45)}
+.k0{color:#6B727C;background:transparent;border-color:#3A3F47;border-style:dashed}  /* no match */
+
 @keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 .rise{animation:rise .6s cubic-bezier(.2,.7,.2,1) both}
 @keyframes pop{0%{opacity:0;transform:scale(.6)}70%{opacity:1;transform:scale(1.06)}100%{opacity:1;transform:none}}
@@ -120,4 +165,10 @@ td b{color:#F4F5F6}
 .wire{height:2px;background:repeating-linear-gradient(90deg,#5CCFE6 0 6px,transparent 6px 12px);background-size:12px 2px;animation:wire .6s linear infinite}
 @keyframes wirey{to{background-position:0 12px}}
 .wirey{width:2px;background:repeating-linear-gradient(180deg,#5CCFE6 0 6px,transparent 6px 12px);background-size:2px 12px;animation:wirey .6s linear infinite}
-@media (prefers-reduced-motion: reduce){*{animation:none !important}}
+@media (prefers-reduced-motion: reduce){
+  *{animation:none !important}
+  /* With animations off, still show where .out / .hit rows end up. */
+  .tbl .out{opacity:.22}
+  .tbl .hit{background:rgba(242,181,68,.12)}
+  .tbl .hitb{background:rgba(92,207,230,.1)}
+}

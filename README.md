@@ -8,6 +8,9 @@ Each explainer is a single static HTML page that students step through at their 
 | Explainer | Topic | Folder | Covers |
 | --- | --- | --- | --- |
 | How AI Works | AI | [`how-ai-works/`](how-ai-works/) | LLM fundamentals, token budgets, MCP servers, custom agents vs subagents, skills |
+| How a SELECT Query Works | SQL | [`sql-select-basics/`](sql-select-basics/) | `FROM`, `WHERE`, `SELECT`, `ORDER BY`, `NULL`, aliases, `DISTINCT`, written vs processing order |
+| How SQL Joins Work | SQL | [`sql-joins/`](sql-joins/) | Keys, inner / left / right / full / cross / self joins, `ON` vs `WHERE`, comma joins |
+| How Summary Queries Work | SQL | [`sql-summary-queries/`](sql-summary-queries/) | Aggregate functions, `GROUP BY`, `HAVING` vs `WHERE`, summaries with joins, `ROLLUP` |
 
 The landing page has a topic filter (**All**, **AI**, **SQL**). Picking one updates the address, so you can share a filtered list, e.g. `https://cptc-cpw.github.io/Explainer-Videos/?topic=sql`.
 
@@ -18,6 +21,12 @@ The landing page has a topic filter (**All**, **AI**, **SQL**). Picking one upda
 - **Replay** restarts the current step's animation.
 - **Link to a step:** every step has its own URL, e.g. `how-ai-works/#step-7`. Copy it from the address bar.
 - Animations are turned off automatically for anyone whose system is set to reduce motion.
+
+## SQL explainers and the AP database
+
+The SQL explainers use the class's **AP** database (SQL Server). Every query and result on those pages was run against a fresh copy of it, so students can run the same queries and get the same rows.
+
+The joins explainer needs one extra row so `RIGHT JOIN` and `FULL OUTER JOIN` have something unmatched on the right-hand side. [`sql/ap-explainer-extras.sql`](sql/ap-explainer-extras.sql) adds it: run it after the class's `create_ap.sql`. It's safe to run more than once.
 
 ## Publishing with GitHub Pages
 
@@ -34,6 +43,7 @@ index.html               landing page listing every explainer
 assets/explainer.css     shared styles and animations
 assets/explainer.js      shared step engine (tabs, progress bar, keys, #step-N links)
 assets/catalog.js        landing page topic filter (?topic=… links)
+sql/                     extra demo data for the SQL explainers
 how-ai-works/index.html  one folder per explainer
 ```
 
